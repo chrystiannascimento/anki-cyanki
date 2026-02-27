@@ -429,6 +429,19 @@ _Versão 2.0 · fevereiro de 2026_
 - Again, Tailwind, with light and dark themes, user can change through a top menu of sorts. Try to make it using proper HSL color science to choose the pallete.
 - Simplicity, Visual Hierarchy, and Progressive Dissemination
 
-## new ideas
+## Novas Ideias Adicionadas ao Plano
 
-Design a plan around all these requirements and suggest important features you think could be important in a service like this.
+1. **Importação Direta de Markdown/PKM (ex: Obsidian)**
+   - Funcionalidade para injetar facilmente notas do Logseq/Obsidian e converter em flashcards (inserção na estrutura FSRS).
+
+2. **Geração de Áudio Offline (TTS) para Flashcards**
+   - Flashcards que convertem texto para áudio utilizando Text-to-Speech nativo, permitindo revisão "hands-free" offline.
+
+3. **Gamificação com Efeitos Visuais (Juice)**
+   - Micro-animações polidas (confetes, sombreados, etc.) ao completar streaks e metas, para maior engajamento.
+
+4. **Automação de Criação por IA**
+   - Integração (opcional/online) que lê cadernos extensos e usa uma LLM (local ou API) para gerar flashcards massivamente usando o padrão NanoID do sistema.
+
+5. **CRDTs (Conflict-free Replicated Data Types)**
+   - Uso de estruturas como Yjs no módulo de cadernos para prevenir colisão de dados durante acessos simultâneos (ex: celular e desktop) e sincronização offline.
