@@ -1,7 +1,19 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from routers import sync
+from database import engine, Base
+import models # Ensuring models are loaded into Base
 
-app = FastAPI(title="Cyanki API", version="0.1.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Auto-create tables for local testing
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+
+app = FastAPI(title="Cyanki API", version="0.1.0", lifespan=lifespan)
+
 
 # Set up CORS for frontend communication
 origins = [
@@ -16,6 +28,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(sync.router)
 
 @app.get("/health")
 async def health_check():
