@@ -19,6 +19,8 @@ app = FastAPI(title="Cyanki API", version="0.1.0", lifespan=lifespan)
 origins = [
     "http://localhost:5173",  # SvelteKit dev server
     "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
 ]
 
 app.add_middleware(
@@ -30,6 +32,8 @@ app.add_middleware(
 )
 
 app.include_router(sync.router)
+from routers import user
+app.include_router(user.router)
 
 @app.get("/health")
 async def health_check():
