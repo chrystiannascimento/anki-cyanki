@@ -54,9 +54,17 @@
 				<p class="text-neutral-500 mt-2">Continuous Learning Ecosystem</p>
 			</div>
 			
-			<button on:click={triggerSync} class="px-4 py-2 bg-neutral-200 dark:bg-neutral-800 rounded-lg shadow-sm font-medium hover:bg-neutral-300 transition-colors cursor-pointer">
-				Force Sync
-			</button>
+			<div class="flex items-center gap-3">
+			    <a href="/notebooks" class="px-5 py-2.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 rounded-xl font-semibold hover:bg-neutral-200 dark:hover:bg-neutral-700 transition">
+			        Notebooks
+			    </a>
+			    <a href="/study" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-500/20 transition-all hover:-translate-y-0.5">
+			        Study Now
+			    </a>
+				<button on:click={triggerSync} class="px-4 py-2.5 text-sm bg-neutral-100 dark:bg-neutral-800 text-neutral-500 rounded-xl font-medium hover:bg-neutral-200 transition-colors cursor-pointer">
+					Sync
+				</button>
+			</div>
 		</header>
 
 		<section class="p-6 bg-white dark:bg-neutral-800 rounded-2xl shadow-xl shadow-indigo-500/5 ring-1 ring-neutral-200 dark:ring-neutral-700">
