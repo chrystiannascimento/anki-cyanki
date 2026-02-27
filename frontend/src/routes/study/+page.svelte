@@ -1,12 +1,14 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
+    import { onMount, tick } from 'svelte';
     import { getDueCards, processReview, Rating } from '$lib/fsrs';
     import type { Flashcard } from '$lib/db';
+    import { Confetti } from 'svelte-confetti';
     
     let dueCards: Flashcard[] = [];
     let currentIndex = 0;
     let showingAnswer = false;
-    let streak = 0; // Gamification UI 
+    let streak = 0; 
+    let showConfetti = false;
     
     onMount(async () => {
         dueCards = await getDueCards(10);
@@ -23,17 +25,27 @@
 
         await processReview(currentCard.id, rating);
         
-        streak += 1; // Play confetti or juice here per UC-11 / UC-10!
+        streak += 1; 
+        showConfetti = false;
+        await tick();
+        showConfetti = true;
+
         showingAnswer = false;
         currentIndex += 1;
     }
 </script>
 
-<div class="min-h-screen bg-neutral-900 text-white flex flex-col items-center justify-center p-6">
-    <header class="absolute top-0 left-0 w-full p-6 flex justify-between items-center text-neutral-400">
+<div class="min-h-screen bg-neutral-900 text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    {#if showConfetti}
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-50">
+            <Confetti x={[-2, 2]} y={[0.5, 2.5]} amount={50} delay={[0, 100]} rounded />
+        </div>
+    {/if}
+
+    <header class="absolute top-0 left-0 w-full p-6 flex justify-between items-center text-neutral-400 z-10">
         <a href="/" class="hover:text-white transition">← Home</a>
         <div class="flex items-center gap-2">
-            <span class="text-orange-500 text-xl">🔥</span>
+            <span class="text-orange-500 text-xl {showConfetti ? 'animate-bounce' : ''}">🔥</span>
             <span class="font-bold text-lg text-white">{streak} Streak</span>
         </div>
     </header>
@@ -41,7 +53,7 @@
     {#if !currentCard && dueCards.length === 0}
         <div class="text-center animate-pulse">Loading due cards...</div>
     {:else if currentIndex >= dueCards.length}
-        <div class="text-center space-y-6">
+        <div class="text-center space-y-6 z-10">
             <div class="text-6xl mb-4">🎉</div>
             <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500">
                 You're all caught up!
@@ -50,7 +62,7 @@
             <a href="/" class="inline-block mt-8 px-8 py-3 bg-neutral-800 hover:bg-neutral-700 rounded-full font-bold transition">Play Mini-Game</a>
         </div>
     {:else}
-        <div class="w-full max-w-2xl">
+        <div class="w-full max-w-2xl z-10">
             <!-- Progress Bar -->
             <div class="w-full h-2 bg-neutral-800 rounded-full mb-8 overflow-hidden">
                 <div 

@@ -10,13 +10,39 @@
 	let tags = '';
 
 	let flashcards: Flashcard[] = [];
+	let reviewsToday = 0;
+	let totalReviews = 0;
+	
+	let searchQuery = '';
+	$: filteredFlashcards = flashcards.filter(c => 
+	    c.front.toLowerCase().includes(searchQuery.toLowerCase()) || 
+	    c.back.toLowerCase().includes(searchQuery.toLowerCase()) ||
+	    c.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
+	);
 
 	onMount(() => {
 		const observable = liveQuery(() => db.flashcards.orderBy('createdAt').reverse().toArray());
 		const subscription = observable.subscribe((result) => {
 			flashcards = result;
 		});
-		return () => subscription.unsubscribe();
+
+		const reviewsObservable = liveQuery(async () => {
+		    const logs = await db.reviewLogs.toArray();
+		    const today = new Date();
+		    today.setHours(0,0,0,0);
+		    const todayReviews = logs.filter(l => l.reviewedAt >= today.getTime());
+		    return { total: logs.length, today: todayReviews.length };
+		});
+		
+		const revSub = reviewsObservable.subscribe(res => {
+		    totalReviews = res.total;
+		    reviewsToday = res.today;
+		});
+
+		return () => {
+		    subscription.unsubscribe();
+		    revSub.unsubscribe();
+		}
 	});
 
 	async function addFlashcard() {
@@ -67,6 +93,21 @@
 			</div>
 		</header>
 
+		<section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+		    <div class="p-6 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl shadow-sm border border-indigo-100 dark:border-indigo-800/50 flex flex-col items-center justify-center transition-transform hover:scale-105 cursor-default">
+		        <span class="text-4xl font-black text-indigo-600 dark:text-indigo-400 mb-2">{flashcards.length}</span>
+		        <span class="text-xs text-indigo-800/70 dark:text-indigo-300 font-extrabold uppercase tracking-widest">Global Memory</span>
+		    </div>
+		    <div class="p-6 bg-orange-50 dark:bg-orange-900/20 rounded-2xl shadow-sm border border-orange-100 dark:border-orange-800/50 flex flex-col items-center justify-center transition-transform hover:scale-105 cursor-default">
+		        <span class="text-4xl font-black text-orange-600 dark:text-orange-400 mb-2">{reviewsToday}</span>
+		        <span class="text-xs text-orange-800/70 dark:text-orange-300 font-extrabold uppercase tracking-widest">Reviews Today</span>
+		    </div>
+		    <div class="p-6 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl shadow-sm border border-emerald-100 dark:border-emerald-800/50 flex flex-col items-center justify-center transition-transform hover:scale-105 cursor-default">
+		        <span class="text-4xl font-black text-emerald-600 dark:text-emerald-400 mb-2">{totalReviews}</span>
+		        <span class="text-xs text-emerald-800/70 dark:text-emerald-300 font-extrabold uppercase tracking-widest">Total XP</span>
+		    </div>
+		</section>
+
 		<section class="p-6 bg-white dark:bg-neutral-800 rounded-2xl shadow-xl shadow-indigo-500/5 ring-1 ring-neutral-200 dark:ring-neutral-700">
 			<h2 class="text-2xl font-bold mb-4">Add Flashcard</h2>
 			<div class="space-y-4">
@@ -89,9 +130,13 @@
 		</section>
 
 		<section class="space-y-4">
-			<h2 class="text-2xl font-bold flex items-center gap-2">Your Deck <span class="text-indigo-600 bg-indigo-100 dark:bg-indigo-500/20 dark:text-indigo-400 text-xs px-2 py-1 rounded-full">{flashcards.length} cards</span></h2>
+			<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+			    <h2 class="text-2xl font-bold flex items-center gap-2">Your Deck <span class="text-indigo-600 bg-indigo-100 dark:bg-indigo-500/20 dark:text-indigo-400 text-xs px-2 py-1 rounded-full">{filteredFlashcards.length} cards</span></h2>
+			    <input bind:value={searchQuery} type="text" placeholder="Search cards & tags..." class="w-full sm:w-64 p-2.5 text-sm rounded-lg bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm transition-shadow" />
+			</div>
+			
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-				{#each flashcards as card (card.id)}
+				{#each filteredFlashcards as card (card.id)}
 					<div class="p-5 bg-white dark:bg-neutral-800 rounded-2xl shadow-sm ring-1 ring-neutral-200 dark:ring-neutral-700 group cursor-pointer hover:shadow-md transition-all hover:-translate-y-1 overflow-hidden">
 						<h3 class="font-bold text-lg mb-2 line-clamp-2 text-neutral-800 dark:text-neutral-100">{card.front}</h3>
 						<p class="text-neutral-500 dark:text-neutral-400 line-clamp-3 text-sm">{card.back}</p>
@@ -108,6 +153,10 @@
 				{#if flashcards.length === 0}
 					<div class="col-span-full py-12 text-center text-neutral-500 border-2 border-dashed border-neutral-200 dark:border-neutral-800 rounded-2xl">
 						<p>No flashcards yet. Add one above!</p>
+					</div>
+				{:else if filteredFlashcards.length === 0}
+				    <div class="col-span-full py-12 text-center text-neutral-500 border-2 border-dashed border-neutral-200 dark:border-neutral-800 rounded-2xl">
+						<p>No results found for "{searchQuery}".</p>
 					</div>
 				{/if}
 			</div>
