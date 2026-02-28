@@ -12,3 +12,4 @@ Cyanki is an offline-first, continuous learning platform designed for high perfo
 - **Public Community Notebooks**: Ability to mark specific Notebooks as Public and share them in the Community Tab with other learners!
 - **Gamification**: XP tracking, Streak heatmaps, Levels and sound UI feedback designed to maintain study consistency.
 - **Modern Interactive Dashboard**: Smooth TailwindCSS-driven UI with cross-device tracking features.
+- **Robust Dev/Prod Pipelines**: Isolated Docker Compose environments. Test safely in development (`localhost:5174`), while deploying a highly optimized Production build routed securely to the internet via Cloudflare Tunnels.
