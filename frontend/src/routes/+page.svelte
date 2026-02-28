@@ -1,6 +1,16 @@
-<script>
-    // This is handled by +layout.svelte authentication check.
-    // We just render an empty div to avoid 404s before the client-side router redirects.
+<script lang="ts">
+    import { onMount } from 'svelte';
+    import { goto } from '$app/navigation';
+    import { session } from '$lib/authStore';
+
+    onMount(() => {
+        let hasToken = false;
+        // Unsubscribe immediately as we only need the snapshot
+        const unsub = session.subscribe(value => hasToken = !!value.token);
+        unsub();
+
+        goto(hasToken ? '/dashboard' : '/login');
+    });
 </script>
 
 <div class="min-h-screen bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center">

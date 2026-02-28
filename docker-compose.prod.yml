@@ -1,14 +1,23 @@
 services:
-  frontend:
+  sveltekit:
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
-    ports:
-      - "3015:3015"
     env_file:
       - ./frontend/.env.production
     restart: unless-stopped
     depends_on:
+      - backend
+
+  frontend:
+    image: nginx:alpine
+    ports:
+      - "3015:3015"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped
+    depends_on:
+      - sveltekit
       - backend
 
   backend:
