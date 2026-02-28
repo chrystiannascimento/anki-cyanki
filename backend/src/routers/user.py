@@ -4,9 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from datetime import timedelta
 
-import models, schemas, auth
-from database import get_db
-from config import settings
+from src import models, schemas, auth
+from src.database import get_db
+from src.config import settings
 
 router = APIRouter(
     prefix="/api/auth",

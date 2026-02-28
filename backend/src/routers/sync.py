@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from database import get_db
-from models import Flashcard, ReviewLog
-from schemas import SyncPushRequest, SyncPushResponse
+from src.database import get_db
+from src.models import Flashcard, ReviewLog
+from src.schemas import SyncPushRequest, SyncPushResponse
 
 router = APIRouter(prefix="/api/sync", tags=["sync"])
 

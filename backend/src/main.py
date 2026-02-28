@@ -1,9 +1,9 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import sync
-from database import engine, Base
-import models # Ensuring models are loaded into Base
+from src.routers import sync
+from src.database import engine, Base
+import src.models as models # Ensuring models are loaded into Base
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -32,7 +32,7 @@ app.add_middleware(
 )
 
 app.include_router(sync.router)
-from routers import user
+from src.routers import user
 app.include_router(user.router)
 
 @app.get("/health")

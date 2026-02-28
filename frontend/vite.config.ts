@@ -1,6 +1,6 @@
 import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 
 export default defineConfig({
@@ -42,7 +42,7 @@ export default defineConfig({
                             cacheName: 'google-fonts-cache',
                             expiration: {
                                 maxEntries: 10,
-                                maxAgeSeconds: 60 * 60 * 24 * 365 // <== 365 days
+                                maxAgeSeconds: 60 * 60 * 24 * 365
                             },
                             cacheableResponse: {
                                 statuses: [0, 200]
@@ -52,5 +52,10 @@ export default defineConfig({
                 ]
             }
         })
-    ]
+    ],
+    test: {
+        include: ['src/**/*.{test,spec}.{js,ts}'],
+        environment: 'jsdom',
+        setupFiles: ['./vitest-setup.ts'],
+    }
 });
