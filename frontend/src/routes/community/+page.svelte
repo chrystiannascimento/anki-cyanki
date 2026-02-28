@@ -3,6 +3,7 @@
 	import { db } from '$lib/db';
 	import { syncEngine } from '$lib/sync';
 	import { nanoid } from 'nanoid';
+	import { PUBLIC_API_URL } from '$env/static/public';
 
 	interface PublicNotebook {
 		id: string;
@@ -18,7 +19,7 @@
 
 	onMount(async () => {
 		try {
-			const res = await fetch('http://localhost:8000/api/community/notebooks');
+			const res = await fetch(`${PUBLIC_API_URL}/community/notebooks`);
 			if (!res.ok) throw new Error('Failed to fetch community notebooks');
 			notebooks = await res.json();
 		} catch (e: any) {

@@ -1,6 +1,7 @@
 <script lang="ts">
     import { goto } from '$app/navigation';
     import { session } from '$lib/authStore';
+    import { PUBLIC_API_URL } from '$env/static/public';
 
     let email = '';
     let password = '';
@@ -18,7 +19,7 @@
         errorMessage = '';
         
         try {
-            const response = await fetch('http://localhost:8000/api/auth/register', {
+            const response = await fetch(`${PUBLIC_API_URL}/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
@@ -34,7 +35,7 @@
             loginForm.append('username', email);
             loginForm.append('password', password);
 
-            const loginRes = await fetch('http://localhost:8000/api/auth/login', {
+            const loginRes = await fetch(`${PUBLIC_API_URL}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: loginForm

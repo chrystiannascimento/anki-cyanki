@@ -1,6 +1,7 @@
 <script lang="ts">
     import { goto } from '$app/navigation';
     import { session } from '$lib/authStore';
+    import { PUBLIC_API_URL } from '$env/static/public';
 
     let email = '';
     let password = '';
@@ -17,7 +18,7 @@
             formData.append('password', password);
 
             // In local/docker dev, point to real backend or localhost
-            const response = await fetch('http://localhost:8000/api/auth/login', {
+            const response = await fetch(`${PUBLIC_API_URL}/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',

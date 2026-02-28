@@ -1,0 +1,32 @@
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Install dependencies
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Copy code and Environment Variables
+COPY . .
+
+# Build the SvelteKit app using adapter-node
+RUN npm run build
+
+# Stage 2: Production Server Setup
+FROM node:20-alpine
+
+WORKDIR /app
+
+# SvelteKit adapter-node requires only the `build` folder and `package.json` with dependencies.
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/package-lock.json ./
+COPY --from=builder /app/build ./build
+COPY --from=builder /app/node_modules ./node_modules
+
+# Cloudflare and User requested port 3015
+ENV PORT=3015
+ENV NODE_ENV=production
+
+EXPOSE 3015
+
+CMD ["node", "build/index.js"]

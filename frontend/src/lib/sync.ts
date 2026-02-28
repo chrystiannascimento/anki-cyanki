@@ -1,6 +1,5 @@
 import { db } from './db';
-
-const API_BASE_URL = 'http://localhost:8000';
+import { PUBLIC_API_URL } from '$env/static/public';
 
 export class SyncEngine {
     private isSyncing = false;
@@ -30,7 +29,7 @@ export class SyncEngine {
             const token = localStorage.getItem('cyanki_token');
             if (!token) return; // Cannot sync without being logged in
 
-            const response = await fetch(`${API_BASE_URL}/api/sync/push`, {
+            const response = await fetch(`${PUBLIC_API_URL}/sync/push`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
