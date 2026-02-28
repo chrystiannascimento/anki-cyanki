@@ -89,6 +89,9 @@
 			    <a href="/notebooks" class="px-5 py-2.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 rounded-xl font-semibold hover:bg-neutral-200 dark:hover:bg-neutral-700 transition">
 			        Notebooks
 			    </a>
+			    <a href="/community" class="px-5 py-2.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 rounded-xl font-semibold hover:bg-neutral-200 dark:hover:bg-neutral-700 transition">
+			        Community
+			    </a>
 			    <a href="/study" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-500/20 transition-all hover:-translate-y-0.5">
 			        Study Now
 			    </a>

@@ -30,6 +30,7 @@ export interface Notebook {
     id: string; // NanoID
     title: string;
     content: string; // Markdown text
+    isPublic?: boolean;
     createdAt: number;
     updatedAt: number;
 }
@@ -54,3 +55,12 @@ export class CyankiDB extends Dexie {
 }
 
 export const db = new CyankiDB();
+
+export async function clearCyankiData() {
+    await Promise.all([
+        db.flashcards.clear(),
+        db.reviewLogs.clear(),
+        db.syncQueue.clear(),
+        db.notebooks.clear()
+    ]);
+}

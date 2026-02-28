@@ -13,6 +13,20 @@ class User(Base):
     
     flashcards = relationship("Flashcard", back_populates="owner")
     reviews = relationship("ReviewLog", back_populates="user")
+    notebooks = relationship("Notebook", back_populates="owner")
+
+class Notebook(Base):
+    __tablename__ = "notebooks"
+    
+    id = Column(String, primary_key=True, index=True) # NanoID
+    user_id = Column(Integer, ForeignKey("users.id"))
+    title = Column(String, nullable=False)
+    content = Column(Text, nullable=False)
+    is_public = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime)
+    
+    owner = relationship("User", back_populates="notebooks")
 
 class Flashcard(Base):
     __tablename__ = "flashcards"

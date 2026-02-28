@@ -1,5 +1,6 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
+import { clearCyankiData } from '$lib/db';
 
 export interface UserSession {
     token: string | null;
@@ -21,6 +22,9 @@ session.subscribe(value => {
         } else {
             localStorage.removeItem('cyanki_token');
             localStorage.removeItem('cyanki_email');
+
+            // Wipe offline database to prevent data leaking between users on same device
+            clearCyankiData().catch(console.error);
         }
     }
 });

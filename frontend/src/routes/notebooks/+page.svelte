@@ -28,14 +28,19 @@
 		};
 
 		await db.notebooks.add(newNotebook);
-		// Note: We would queue notebook creation for sync too!
-		// await syncEngine.enqueue('CREATE', 'NOTEBOOK', newNotebook.id, newNotebook);
+		
+		await syncEngine.enqueue('CREATE', 'NOTEBOOK', newNotebook.id, {
+			title: newNotebook.title,
+			content: newNotebook.content,
+			isPublic: false
+		});
 		
 		titleInput = '';
 	}
 	
 	async function deleteNotebook(id: string) {
 	    await db.notebooks.delete(id);
+		await syncEngine.enqueue('DELETE', 'NOTEBOOK', id, {});
 	}
 </script>
 

@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { db, type Notebook } from '$lib/db';
 	import { parseAndInjectNotebookFlashcards } from '$lib/notebookParser';
+	import { syncEngine } from '$lib/sync';
 	import { marked } from 'marked';
 	import DOMPurify from 'dompurify';
 
@@ -55,6 +56,26 @@
 	    // Sanitize and render HTML to avoid XSS
 		renderedContent = DOMPurify.sanitize(marked.parse(md) as string);
 	}
+
+	async function togglePublic() {
+		if (!notebook) return;
+		
+		notebook.isPublic = !notebook.isPublic;
+		
+		await db.notebooks.update(notebookId, {
+			isPublic: notebook.isPublic,
+			updatedAt: Date.now()
+		});
+		
+		// Enqueue the Notebook update to Backend
+		await syncEngine.enqueue('UPDATE', 'NOTEBOOK', notebookId, {
+			title: notebook.title,
+			content: notebook.content,
+			isPublic: notebook.isPublic
+		});
+		
+		notebook = notebook; // Trigger Svelte Reactivity
+	}
 </script>
 
 {#if notebook}
@@ -63,6 +84,12 @@
 		<div class="flex items-center gap-4">
 			<a href="/notebooks" class="text-neutral-500 hover:text-indigo-600 transition">← Back</a>
 			<h1 class="font-bold text-lg">{notebook.title}</h1>
+			<button 
+				on:click={togglePublic} 
+				class="ml-4 text-xs font-semibold px-2 py-1 rounded-full border transition-colors {notebook.isPublic ? 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30' : 'bg-neutral-100 text-neutral-600 border-neutral-300 dark:bg-neutral-800 dark:text-neutral-400'}"
+			>
+				{notebook.isPublic ? '🌍 Public' : '🔒 Private'}
+			</button>
 		</div>
 		<div class="text-sm font-medium text-neutral-400">
 			{#if isSaving}

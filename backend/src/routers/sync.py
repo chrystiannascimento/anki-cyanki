@@ -1,16 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.database import get_db
-from src.models import Flashcard, ReviewLog
+from src.models import Flashcard, ReviewLog, Notebook, User
 from src.schemas import SyncPushRequest, SyncPushResponse
+from src.auth import get_current_user
 
 router = APIRouter(prefix="/api/sync", tags=["sync"])
 
 @router.post("/push", response_model=SyncPushResponse)
-async def push_sync(request: SyncPushRequest, db: AsyncSession = Depends(get_db)):
-    # In a real app we'd also check user dependencies here via JWT token
-    # For now we'll naively process
-    
+async def push_sync(request: SyncPushRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     processed = 0
     errors = []
     
@@ -18,11 +16,13 @@ async def push_sync(request: SyncPushRequest, db: AsyncSession = Depends(get_db)
         try:
             if op.entityType == "FLASHCARD":
                 if op.action in ["CREATE", "UPDATE"]:
-                    # Upsert logic pseudo-code 
+                    # Ensure the card either belongs to current_user or doesn't exist yet
                     card = await db.get(Flashcard, str(op.entityId))
                     if not card:
-                        card = Flashcard(id=str(op.entityId), user_id=1) # Hardcoded user_id for now
+                        card = Flashcard(id=str(op.entityId), user_id=current_user.id)
                         db.add(card)
+                    elif card.user_id != current_user.id:
+                        raise HTTPException(status_code=403, detail="Not authorized to modify this flashcard")
                     
                     card.front = op.payload.get("front", card.front)
                     card.back = op.payload.get("back", card.back)
@@ -35,8 +35,27 @@ async def push_sync(request: SyncPushRequest, db: AsyncSession = Depends(get_db)
                         
                 elif op.action == "DELETE":
                     card = await db.get(Flashcard, str(op.entityId))
-                    if card:
+                    if card and card.user_id == current_user.id:
                         await db.delete(card)
+                        
+            elif op.entityType == "NOTEBOOK":
+                if op.action in ["CREATE", "UPDATE"]:
+                    book = await db.get(Notebook, str(op.entityId))
+                    if not book:
+                        book = Notebook(id=str(op.entityId), user_id=current_user.id)
+                        db.add(book)
+                    elif book.user_id != current_user.id:
+                         raise HTTPException(status_code=403, detail="Not authorized to modify this notebook")
+                         
+                    book.title = op.payload.get("title", book.title)
+                    book.content = op.payload.get("content", book.content)
+                    if "isPublic" in op.payload:
+                        book.is_public = op.payload.get("isPublic")
+                        
+                elif op.action == "DELETE":
+                    book = await db.get(Notebook, str(op.entityId))
+                    if book and book.user_id == current_user.id:
+                        await db.delete(book)
                         
             elif op.entityType == "REVIEW_LOG":
                 if op.action == "CREATE":
@@ -44,7 +63,7 @@ async def push_sync(request: SyncPushRequest, db: AsyncSession = Depends(get_db)
                         flashcard_id=str(op.entityId),
                         grade=op.payload.get("grade"),
                         state=op.payload.get("state"),
-                        user_id=1 # Hardcoded for now
+                        user_id=current_user.id
                     )
                     db.add(log)
                     

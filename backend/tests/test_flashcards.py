@@ -6,8 +6,14 @@ async def test_push_flashcard_sync(client: AsyncClient):
     # Register and login to get token (even if sync is naive right now, good practice)
     await client.post(
         "/api/auth/register",
-        json={"email": "sync@example.com", "password": "syncpassword", "name": "Sync User"}
+        json={"email": "sync@example.com", "password": "syncpassword"}
     )
+    
+    login_response = await client.post(
+        "/api/auth/login",
+        data={"username": "sync@example.com", "password": "syncpassword"}
+    )
+    token = login_response.json()["access_token"]
     
     # Sync push a new flashcard
     sync_payload = {
@@ -29,7 +35,8 @@ async def test_push_flashcard_sync(client: AsyncClient):
     
     response = await client.post(
         "/api/sync/push",
-        json=sync_payload
+        json=sync_payload,
+        headers={"Authorization": f"Bearer {token}"}
     )
     
     assert response.status_code == 200
@@ -42,8 +49,14 @@ async def test_push_flashcard_sync(client: AsyncClient):
 async def test_update_flashcard_sync(client: AsyncClient):
     await client.post(
         "/api/auth/register",
-        json={"email": "sync2@example.com", "password": "syncpassword", "name": "Sync User"}
+        json={"email": "sync2@example.com", "password": "syncpassword"}
     )
+    
+    login_response = await client.post(
+        "/api/auth/login",
+        data={"username": "sync2@example.com", "password": "syncpassword"}
+    )
+    token = login_response.json()["access_token"]
     
     # Create
     await client.post(
@@ -54,7 +67,8 @@ async def test_update_flashcard_sync(client: AsyncClient):
                 "payload": {"front": "Old front", "back": "Old back", "tags": []},
                 "createdAt": 1700000000
             }]
-        }
+        },
+        headers={"Authorization": f"Bearer {token}"}
     )
     
     # Update
@@ -66,7 +80,8 @@ async def test_update_flashcard_sync(client: AsyncClient):
                 "payload": {"front": "New front", "back": "New back", "tags": ["updated"]},
                 "createdAt": 1700000050
             }]
-        }
+        },
+        headers={"Authorization": f"Bearer {token}"}
     )
     
     assert response.status_code == 200

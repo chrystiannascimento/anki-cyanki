@@ -32,8 +32,9 @@ app.add_middleware(
 )
 
 app.include_router(sync.router)
-from src.routers import user
+from src.routers import user, community
 app.include_router(user.router)
+app.include_router(community.router)
 
 @app.get("/health")
 async def health_check():
