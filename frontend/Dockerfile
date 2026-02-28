@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:20-alpine
 
 WORKDIR /app
 
@@ -11,26 +11,10 @@ RUN npm ci
 # Copy the rest of the code
 COPY . .
 
-# Build the SvelteKit application
-RUN npm run build
-
-# Prune dev dependencies to keep the final image light
-RUN npm ci --omit=dev
-
-# Production stage
-FROM node:20-alpine
-
-WORKDIR /app
-
-# Copy built application and production dependencies from builder
-COPY --from=builder /app/build ./build
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./
-
 EXPOSE 5173
 
-ENV NODE_ENV=production
+ENV NODE_ENV=development
 ENV PORT=5173
 
-# Run the node app
-CMD ["node", "build"]
+# Run the SvelteKit development server exposing it to the docker network
+CMD sh -c "npm install && npm run dev -- --host 0.0.0.0"

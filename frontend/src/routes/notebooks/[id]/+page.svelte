@@ -6,7 +6,7 @@
 	import { marked } from 'marked';
 	import DOMPurify from 'dompurify';
 
-	let notebookId = $page.params.id;
+	let notebookId = $page.params.id as string;
 	let notebook: Notebook | undefined = undefined;
 	
 	let content = '';

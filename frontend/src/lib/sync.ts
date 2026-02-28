@@ -27,9 +27,15 @@ export class SyncEngine {
 
             // Push pending changes to the server
             // This is a naive batch push for the scaffold. In production, we'll implement batching with offset/cursor.
+            const token = localStorage.getItem('cyanki_token');
+            if (!token) return; // Cannot sync without being logged in
+
             const response = await fetch(`${API_BASE_URL}/api/sync/push`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ operations: pending })
             });
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { gamificationState, addXP, checkStreak } from '../stores/gamification';
+import { gamificationState, addXP, checkStreak } from '$lib/stores/gamification';
 
 describe('Gamification Store', () => {
     beforeEach(() => {
