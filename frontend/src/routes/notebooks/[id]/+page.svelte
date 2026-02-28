@@ -53,8 +53,10 @@
 	}
 
 	function renderMarkdown(md: string) {
+	    // Clean tracking IDs from visual preview
+	    const cleanMd = md.replace(/<!--\s*id:\s*[\w-]+\s*-->/g, '');
 	    // Sanitize and render HTML to avoid XSS
-		renderedContent = DOMPurify.sanitize(marked.parse(md) as string);
+		renderedContent = DOMPurify.sanitize(marked.parse(cleanMd) as string);
 	}
 
 	async function togglePublic() {
