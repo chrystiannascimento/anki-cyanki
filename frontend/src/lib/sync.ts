@@ -26,28 +26,28 @@ export class SyncEngine {
 
         try {
             const pending = await db.syncQueue.orderBy('createdAt').toArray();
-            if (pending.length === 0) return;
 
             // Push pending changes to the server
-            // This is a naive batch push for the scaffold. In production, we'll implement batching with offset/cursor.
             const token = localStorage.getItem('cyanki_token');
             if (!token) return; // Cannot sync without being logged in
 
-            const response = await fetch(`${PUBLIC_API_URL}/sync/push`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ operations: pending })
-            });
+            if (pending.length > 0) {
+                const response = await fetch(`${PUBLIC_API_URL}/sync/push`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ operations: pending })
+                });
 
-            if (response.ok) {
-                const idsToDelete = pending.map(p => p.id!);
-                await db.syncQueue.bulkDelete(idsToDelete);
+                if (response.ok) {
+                    const idsToDelete = pending.map(p => p.id!);
+                    await db.syncQueue.bulkDelete(idsToDelete);
+                }
             }
 
-            // Optional: Pull remote changes here
+            // Pull remote changes here unconditionally
             await this.pullRemote();
 
         } catch (error) {

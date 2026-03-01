@@ -79,37 +79,37 @@
 
 <div class="min-h-screen bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 p-8">
 	<div class="max-w-4xl mx-auto space-y-8">
-		<header class="flex items-center justify-between">
+		<header class="flex flex-col md:flex-row md:items-center justify-between gap-4">
 			<div>
 				<h1 class="text-4xl font-extrabold tracking-tight text-indigo-600 dark:text-indigo-400">Cyanki</h1>
 				<p class="text-neutral-500 mt-2">Continuous Learning Ecosystem</p>
 			</div>
 			
-			<div class="flex items-center gap-3">
-			    <a href="/notebooks" class="px-5 py-2.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 rounded-xl font-semibold hover:bg-neutral-200 dark:hover:bg-neutral-700 transition">
+			<div class="flex flex-wrap items-center gap-2 sm:gap-3">
+			    <a href="/notebooks" class="px-3 sm:px-5 py-2.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 rounded-xl font-semibold hover:bg-neutral-200 dark:hover:bg-neutral-700 transition text-sm sm:text-base">
 			        Notebooks
 			    </a>
-			    <a href="/community" class="px-5 py-2.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 rounded-xl font-semibold hover:bg-neutral-200 dark:hover:bg-neutral-700 transition">
+			    <a href="/community" class="px-3 sm:px-5 py-2.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 rounded-xl font-semibold hover:bg-neutral-200 dark:hover:bg-neutral-700 transition text-sm sm:text-base">
 			        Community
 			    </a>
-			    <a href="/study" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-500/20 transition-all hover:-translate-y-0.5">
+			    <a href="/study" class="px-4 sm:px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-500/20 transition-all hover:-translate-y-0.5 text-sm sm:text-base whitespace-nowrap">
 			        Study Now
 			    </a>
 			    
 			    <!-- Auth logic -->
 			    {#if $session.token}
-			        <button on:click={triggerSync} class="px-4 py-2.5 text-sm bg-neutral-100 dark:bg-neutral-800 text-neutral-500 rounded-xl font-medium hover:bg-neutral-200 transition-colors cursor-pointer" title="Manually push changes to server">
+			        <button on:click={triggerSync} class="px-3 sm:px-4 py-2.5 text-sm bg-neutral-100 dark:bg-neutral-800 text-neutral-500 rounded-xl font-medium hover:bg-neutral-200 transition-colors cursor-pointer" title="Manually push changes to server">
 					    Sync
 				    </button>
-			        <div class="hidden md:flex flex-col text-right ml-4 border-l border-neutral-300 dark:border-neutral-700 pl-4">
-			            <span class="text-xs font-bold text-neutral-400">{$session.email}</span>
+			        <div class="flex flex-col text-right ml-0 sm:ml-4 border-l border-neutral-300 dark:border-neutral-700 pl-4">
+			            <span class="text-xs font-bold text-neutral-400 truncate max-w-[100px] sm:max-w-xs" title="{$session.email}">{$session.email}</span>
 			            <div class="flex gap-2 justify-end mt-1">
 			                <a href="/profile" class="text-xs hover:text-indigo-500 transition-colors">Profile</a>
 			                <button on:click={logout} class="text-xs text-red-500 hover:text-red-400 transition-colors">Logout</button>
 			            </div>
 			        </div>
 			    {:else}
-			        <a href="/login" class="ml-4 px-5 py-2.5 text-sm border-2 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors">
+			        <a href="/login" class="ml-auto sm:ml-4 px-4 sm:px-5 py-2.5 text-sm border-2 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors">
 			            Log in
 			        </a>
 			    {/if}
