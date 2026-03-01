@@ -13,6 +13,12 @@
 	let content = '';
 	let renderedContent = '';
 	let isSaving = false;
+	
+	let viewMode: 'markdown' | 'flashcards' = 'markdown';
+	let sessionFlashcards: Flashcard[] = [];
+
+    // GFM Line Break Configuration
+	marked.setOptions({ breaks: true });
 
 	// Debounce timer for saving
 	let saveTimer: ReturnType<typeof setTimeout>;
@@ -22,6 +28,10 @@
 		if (notebook) {
 			content = notebook.content;
 			renderMarkdown(content);
+			
+			// Non-destructive initial Load populating visual array & upgrading empty tags gracefully
+			const { extractedCards } = await parseAndInjectNotebookFlashcards(content);
+			sessionFlashcards = extractedCards;
 		}
 	});
 
@@ -35,7 +45,9 @@
 			isSaving = true;
 			
 			// 1. Process Markdown for Q/A -> Flashcards injection
-			const { updatedMarkdown, hasNewInjections } = await parseAndInjectNotebookFlashcards(content);
+			const { updatedMarkdown, hasNewInjections, extractedCards } = await parseAndInjectNotebookFlashcards(content);
+			
+			sessionFlashcards = extractedCards;
 			
 			if (hasNewInjections) {
 				content = updatedMarkdown;
@@ -122,8 +134,43 @@
 		</div>
 
 		<!-- Preview Pane (Right) -->
-		<div class="w-1/2 overflow-y-auto p-8 bg-white dark:bg-neutral-800 prose dark:prose-invert prose-indigo max-w-none">
-			{@html renderedContent}
+		<div class="w-1/2 flex flex-col overflow-hidden bg-white dark:bg-neutral-800">
+		    <div class="flex items-center justify-center p-4 border-b border-neutral-200 dark:border-neutral-700">
+                <div class="bg-neutral-100 dark:bg-neutral-900 rounded-full p-1 flex shadow-inner">
+                    <button class="px-6 py-1.5 rounded-full text-sm font-semibold transition-all {viewMode === 'markdown' ? 'bg-white dark:bg-neutral-700 shadow text-indigo-600 dark:text-indigo-400' : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'}" on:click={() => viewMode = 'markdown'}>Markdown</button>
+                    <button class="px-6 py-1.5 rounded-full text-sm font-semibold transition-all {viewMode === 'flashcards' ? 'bg-white dark:bg-neutral-700 shadow text-indigo-600 dark:text-indigo-400' : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'}" on:click={() => viewMode = 'flashcards'}>Flashcards <span class="ml-1 bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-300 px-2 py-0.5 rounded-full text-xs">{sessionFlashcards.length}</span></button>
+                </div>
+		    </div>
+		    
+		    <div class="flex-1 overflow-y-auto p-8">
+                {#if viewMode === 'markdown'}
+                    <div class="prose dark:prose-invert prose-indigo max-w-none">
+                        {@html renderedContent}
+                    </div>
+                {:else}
+                    <div class="max-w-3xl mx-auto space-y-4">
+                        {#each sessionFlashcards as card (card.id)}
+                            <div class="bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl p-5 shadow-sm">
+                                <h3 class="font-bold text-neutral-800 dark:text-neutral-200 mb-2">{card.front}</h3>
+                                <p class="text-neutral-600 dark:text-neutral-400 text-sm whitespace-pre-wrap">{card.back}</p>
+                                {#if card.tags && card.tags.length > 0}
+                                    <div class="mt-4 flex flex-wrap gap-2">
+                                        {#each card.tags as tag}
+                                            <span class="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs rounded-lg font-medium tracking-wide">#{tag}</span>
+                                        {/each}
+                                    </div>
+                                {/if}
+                            </div>
+                        {/each}
+                        {#if sessionFlashcards.length === 0}
+                            <div class="text-center text-neutral-400 py-12 flex flex-col items-center">
+                                <svg class="w-12 h-12 mb-4 text-neutral-300 dark:text-neutral-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                No Flashcards generated yet. Type `Q: Question` and `A: Answer`.
+                            </div>
+                        {/if}
+                    </div>
+                {/if}
+		    </div>
 		</div>
 	</div>
 </div>

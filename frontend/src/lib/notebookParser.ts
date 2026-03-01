@@ -43,7 +43,16 @@ export async function parseAndInjectNotebookFlashcards(markdown: string) {
         let cardId = match[1];
 
         const frontText = match[2].trim();
-        const backText = match[3].trim();
+        let backText = match[3].trim();
+        let tagsArray: string[] = [];
+
+        // Check if backText ends with a Tags block
+        const tagsMatch = /(?:\r?\n)Tags:\s*(.+)$/i.exec(backText);
+        if (tagsMatch) {
+            tagsArray = tagsMatch[1].split(/[,]+|\s+/).filter((t: string) => t.trim() !== '');
+            // Rip the Tags string block off the base Answer text
+            backText = backText.substring(0, tagsMatch.index).trim();
+        }
 
         let injected = false;
 
@@ -69,7 +78,7 @@ export async function parseAndInjectNotebookFlashcards(markdown: string) {
             id: cardId,
             front: frontText,
             back: backText,
-            tags: [],
+            tags: tagsArray,
             createdAt: Date.now()
         });
 
@@ -77,8 +86,8 @@ export async function parseAndInjectNotebookFlashcards(markdown: string) {
         updatedMarkdown += markdown.slice(lastIndex, match.index);
 
         if (injected) {
-            // Rebuild the match with the ID injected
-            updatedMarkdown += `Q: <!-- id: ${cardId} --> ${frontText}\nA: ${match[3]}`;
+            // Rebuild the match with the ID injected, safely preserving spacing and Tags text
+            updatedMarkdown += fullMatch.replace(/^Q:\s*/, `Q: <!-- id: ${cardId} --> `);
         } else {
             // Keep unchanged match
             updatedMarkdown += fullMatch;
@@ -94,11 +103,15 @@ export async function parseAndInjectNotebookFlashcards(markdown: string) {
     for (const card of extractedCards) {
         const existing = await db.flashcards.get(card.id);
         if (existing) {
-            const hasChanged = existing.front !== card.front || existing.back !== card.back;
+            const hasChanged = existing.front !== card.front ||
+                existing.back !== card.back ||
+                (existing.tags || []).join() !== (card.tags || []).join();
+
             if (hasChanged) {
                 await db.flashcards.update(card.id, {
                     front: card.front,
-                    back: card.back
+                    back: card.back,
+                    tags: card.tags
                 });
                 await syncEngine.enqueue('UPDATE', 'FLASHCARD', card.id, card);
             }
@@ -111,6 +124,7 @@ export async function parseAndInjectNotebookFlashcards(markdown: string) {
 
     return {
         updatedMarkdown,
-        hasNewInjections
+        hasNewInjections,
+        extractedCards
     };
 }
