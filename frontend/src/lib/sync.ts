@@ -25,13 +25,14 @@ export class SyncEngine {
         isSyncingStore.set(true);
 
         try {
-            const pending = await db.syncQueue.orderBy('createdAt').toArray();
-
-            // Push pending changes to the server
             const token = localStorage.getItem('cyanki_token');
             if (!token) return; // Cannot sync without being logged in
 
-            if (pending.length > 0) {
+            // Drain the queue completely to handle rapid continuous user edits
+            while (true) {
+                const pending = await db.syncQueue.orderBy('createdAt').toArray();
+                if (pending.length === 0) break;
+
                 const response = await fetch(`${PUBLIC_API_URL}/sync/push`, {
                     method: 'POST',
                     headers: {
@@ -44,6 +45,8 @@ export class SyncEngine {
                 if (response.ok) {
                     const idsToDelete = pending.map(p => p.id!);
                     await db.syncQueue.bulkDelete(idsToDelete);
+                } else {
+                    break; // Abort push loop on server errors to prevent cyclic spam
                 }
             }
 
@@ -72,16 +75,36 @@ export class SyncEngine {
             if (response.ok) {
                 const data = await response.json();
 
-                // Intelligently UPSERT server data into local Dexie offline storage
+                // Intelligently UPSERT server data resolving conflicts via Timestamps
                 await db.transaction('rw', db.notebooks, db.flashcards, db.reviewLogs, async () => {
                     if (data.notebooks && data.notebooks.length > 0) {
-                        await db.notebooks.bulkPut(data.notebooks);
+                        const locals = await db.notebooks.toArray();
+                        const localMap = new Map(locals.map(n => [n.id, n]));
+                        const safePuts = data.notebooks.filter((remote: any) => {
+                            const local = localMap.get(remote.id);
+                            return !local || remote.updatedAt > local.updatedAt;
+                        });
+                        if (safePuts.length > 0) await db.notebooks.bulkPut(safePuts);
                     }
+
                     if (data.flashcards && data.flashcards.length > 0) {
-                        await db.flashcards.bulkPut(data.flashcards);
+                        const locals = await db.flashcards.toArray();
+                        const localMap = new Map(locals.map(f => [f.id, f]));
+                        const safePuts = data.flashcards.filter((remote: any) => {
+                            const local = localMap.get(remote.id);
+                            return !local || remote.createdAt > local.createdAt;
+                        });
+                        if (safePuts.length > 0) await db.flashcards.bulkPut(safePuts);
                     }
+
                     if (data.reviewLogs && data.reviewLogs.length > 0) {
-                        await db.reviewLogs.bulkPut(data.reviewLogs);
+                        const locals = await db.reviewLogs.toArray();
+                        const localMap = new Map(locals.map(l => [`${l.flashcardId}-${l.reviewedAt}`, l]));
+                        const safePuts = data.reviewLogs.filter((remote: any) => {
+                            const local = localMap.get(`${remote.flashcardId}-${remote.reviewedAt}`);
+                            return !local; // Only insert structurally new review logs
+                        });
+                        if (safePuts.length > 0) await db.reviewLogs.bulkPut(safePuts);
                     }
                 });
             }

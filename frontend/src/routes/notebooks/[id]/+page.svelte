@@ -48,6 +48,13 @@
 				updatedAt: Date.now()
 			});
 			
+			// 3. Enqueue the mutation to the sync engine so Cloud isn't bypassed
+			await syncEngine.enqueue('UPDATE', 'NOTEBOOK', notebookId, {
+				title: notebook.title,
+				content: content,
+				isPublic: notebook.isPublic
+			});
+			
 			isSaving = false;
 		}, 1000); // 1s auto-save debounce
 	}

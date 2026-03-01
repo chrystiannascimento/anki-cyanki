@@ -104,6 +104,9 @@
 			    <a href="/notebooks" class="px-3 sm:px-5 py-2.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 rounded-xl font-semibold hover:bg-neutral-200 dark:hover:bg-neutral-700 transition text-sm sm:text-base">
 			        Notebooks
 			    </a>
+			    <a href="/memory" class="px-3 sm:px-5 py-2.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 rounded-xl font-semibold hover:bg-neutral-200 dark:hover:bg-neutral-700 transition text-sm sm:text-base">
+			        Memory
+			    </a>
 			    <a href="/community" class="px-3 sm:px-5 py-2.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 rounded-xl font-semibold hover:bg-neutral-200 dark:hover:bg-neutral-700 transition text-sm sm:text-base">
 			        Community
 			    </a>

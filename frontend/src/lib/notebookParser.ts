@@ -14,7 +14,7 @@ import { syncEngine } from '$lib/sync';
  * Returns the updated markdown text (with newly injected IDs) and the detected flashcards.
  */
 export async function parseAndInjectNotebookFlashcards(markdown: string) {
-    let updatedMarkdown = markdown;
+    let updatedMarkdown = '';
     const extractedCards: Flashcard[] = [];
     let hasNewInjections = false;
 
@@ -30,12 +30,22 @@ export async function parseAndInjectNotebookFlashcards(markdown: string) {
     // Use a multiline regex to capture everything from Q: until the next Q: or End Of File
     const flashcardRegex = /^Q:\s*(?:<!--\s*id:\s*([\w-]+)\s*-->\s*)?([^\n]+)\n^A:\s*([\s\S]+?)(?=\n^Q:|$)/gm;
 
-    updatedMarkdown = markdown.replace(flashcardRegex, (match, id, front, back) => {
-        let cardId = id;
-        let injected = false;
+    // Find all matches iteratively to reconstruct the string accurately
+    let match;
+    let lastIndex = 0;
 
-        const frontText = front.trim();
-        const backText = back.trim();
+    // We must reset the regex index
+    flashcardRegex.lastIndex = 0;
+
+    while ((match = flashcardRegex.exec(markdown)) !== null) {
+        // match[0] is the whole block, match[1] is ID (optional), match[2] is front, match[3] is back
+        const fullMatch = match[0];
+        let cardId = match[1];
+
+        const frontText = match[2].trim();
+        const backText = match[3].trim();
+
+        let injected = false;
 
         if (!cardId) {
             // Deduplication Strategy: Test if this newly typed Question already fundamentally exists
@@ -59,16 +69,26 @@ export async function parseAndInjectNotebookFlashcards(markdown: string) {
             id: cardId,
             front: frontText,
             back: backText,
-            tags: [], // Tags could be parsed from backText using regex if needed (#\w+)
+            tags: [],
             createdAt: Date.now()
         });
 
+        // Push the leading unconverted text
+        updatedMarkdown += markdown.slice(lastIndex, match.index);
+
         if (injected) {
-            // Inject the ID smoothly at the start line
-            return `Q: <!-- id: ${cardId} --> ${frontText}\nA: ${back}`;
+            // Rebuild the match with the ID injected
+            updatedMarkdown += `Q: <!-- id: ${cardId} --> ${frontText}\nA: ${match[3]}`;
+        } else {
+            // Keep unchanged match
+            updatedMarkdown += fullMatch;
         }
-        return match;
-    });
+
+        lastIndex = flashcardRegex.lastIndex;
+    }
+
+    // Append the tail end of the markdown
+    updatedMarkdown += markdown.slice(lastIndex);
 
     // Update existing cards or create new ones in the Database
     for (const card of extractedCards) {
