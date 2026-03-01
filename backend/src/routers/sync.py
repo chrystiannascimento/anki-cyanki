@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+import datetime
 from src.database import get_db
 from src.models import Flashcard, ReviewLog, Notebook, User
 from src.schemas import SyncPushRequest, SyncPushResponse, SyncPullResponse
@@ -52,6 +53,9 @@ async def push_sync(request: SyncPushRequest, db: AsyncSession = Depends(get_db)
                     book.content = op.payload.get("content", book.content)
                     if "isPublic" in op.payload:
                         book.is_public = op.payload.get("isPublic")
+                    
+                    # Ensure timestamps sync
+                    book.updated_at = datetime.datetime.utcnow()
                         
                 elif op.action == "DELETE":
                     book = await db.get(Notebook, str(op.entityId))
@@ -91,7 +95,9 @@ async def pull_sync(db: AsyncSession = Depends(get_db), current_user: User = Dep
     logs = logs_res.scalars().all()
     
     def dt_to_ms(dt):
-        return int(dt.timestamp() * 1000) if dt else 0
+        if not dt:
+            return int(datetime.datetime.utcnow().timestamp() * 1000)
+        return int(dt.timestamp() * 1000)
         
     return {
         "notebooks": [

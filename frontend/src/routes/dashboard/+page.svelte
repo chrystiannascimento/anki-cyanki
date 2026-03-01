@@ -47,12 +47,27 @@
 	});
 
 	async function addFlashcard() {
-		if (!front || !back) return;
+		if (!front.trim() || !back.trim()) return;
+		
+		const normalizedFront = front.trim().toLowerCase();
+		const normalizedBack = back.trim();
+		
+		// Idempotency: Deduplication check based on Front Hash + Exact Back
+		const existingCards = await db.flashcards.toArray();
+		const isDuplicate = existingCards.some(c => 
+		    c.front.trim().toLowerCase() === normalizedFront && 
+		    c.back.trim() === normalizedBack
+		);
+		
+		if (isDuplicate) {
+		    alert("Duplicate Detected: You already have this exact flashcard in your Global Memory.");
+		    return;
+		}
 		
 		const newCard: Flashcard = {
 			id: nanoid(),
-			front,
-			back,
+			front: front.trim(),
+			back: back.trim(),
 			tags: tags.split(',').map(t => t.trim()),
 			createdAt: Date.now()
 		};

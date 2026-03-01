@@ -18,6 +18,15 @@ export async function parseAndInjectNotebookFlashcards(markdown: string) {
     const extractedCards: Flashcard[] = [];
     let hasNewInjections = false;
 
+    // Pre-fetch all existing flashcards to quickly check for duplicate injections
+    const existingCards = await db.flashcards.toArray();
+
+    // Create a deterministic dictionary indexed by exact normalized 'front' strings
+    const cardDictionary = new Map<string, Flashcard>();
+    for (const card of existingCards) {
+        cardDictionary.set(card.front.trim().toLowerCase(), card);
+    }
+
     // Use a multiline regex to capture everything from Q: until the next Q: or End Of File
     const flashcardRegex = /^Q:\s*(?:<!--\s*id:\s*([\w-]+)\s*-->\s*)?([^\n]+)\n^A:\s*([\s\S]+?)(?=\n^Q:|$)/gm;
 
@@ -25,15 +34,26 @@ export async function parseAndInjectNotebookFlashcards(markdown: string) {
         let cardId = id;
         let injected = false;
 
+        const frontText = front.trim();
+        const backText = back.trim();
+
         if (!cardId) {
-            // Generate a new ID if it's a new card
-            cardId = nanoid();
+            // Deduplication Strategy: Test if this newly typed Question already fundamentally exists
+            const normalizedFront = frontText.toLowerCase();
+            const collisionCard = cardDictionary.get(normalizedFront);
+
+            // If the front matches, and the back is also an exact match (ignoring spaces), it's a true Duplication
+            if (collisionCard && collisionCard.back.trim() === backText) {
+                // Do NOT generate a new ID. Re-use the existing card's ID invisibly.
+                cardId = collisionCard.id;
+            } else {
+                // Truly unique new card
+                cardId = nanoid();
+            }
+
             hasNewInjections = true;
             injected = true;
         }
-
-        const frontText = front.trim();
-        const backText = back.trim();
 
         extractedCards.push({
             id: cardId,
@@ -63,6 +83,7 @@ export async function parseAndInjectNotebookFlashcards(markdown: string) {
                 await syncEngine.enqueue('UPDATE', 'FLASHCARD', card.id, card);
             }
         } else {
+            // Add new cards entirely, or completely decoupled duplicated collision cards that changed
             await db.flashcards.add(card);
             await syncEngine.enqueue('CREATE', 'FLASHCARD', card.id, card);
         }
