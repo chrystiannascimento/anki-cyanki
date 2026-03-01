@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.database import get_db
 from src.models import Flashcard, ReviewLog, Notebook, User
-from src.schemas import SyncPushRequest, SyncPushResponse
+from src.schemas import SyncPushRequest, SyncPushResponse, SyncPullResponse
 from src.auth import get_current_user
+from sqlalchemy.future import select
 
 router = APIRouter(prefix="/api/sync", tags=["sync"])
 
@@ -74,3 +75,52 @@ async def push_sync(request: SyncPushRequest, db: AsyncSession = Depends(get_db)
     await db.commit()
     
     return SyncPushResponse(status="success", processed_count=processed, errors=errors)
+
+@router.get("/pull", response_model=SyncPullResponse)
+async def pull_sync(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # Fetch Notebooks
+    books_res = await db.execute(select(Notebook).filter(Notebook.user_id == current_user.id))
+    books = books_res.scalars().all()
+    
+    # Fetch Flashcards
+    cards_res = await db.execute(select(Flashcard).filter(Flashcard.user_id == current_user.id))
+    cards = cards_res.scalars().all()
+    
+    # Fetch Review Logs
+    logs_res = await db.execute(select(ReviewLog).filter(ReviewLog.user_id == current_user.id))
+    logs = logs_res.scalars().all()
+    
+    def dt_to_ms(dt):
+        return int(dt.timestamp() * 1000) if dt else 0
+        
+    return {
+        "notebooks": [
+            {
+                "id": b.id,
+                "title": b.title,
+                "content": b.content,
+                "isPublic": bool(b.is_public),
+                "createdAt": dt_to_ms(b.created_at),
+                "updatedAt": dt_to_ms(b.updated_at)
+            } for b in books
+        ],
+        "flashcards": [
+            {
+                "id": c.id,
+                "front": c.front,
+                "back": c.back,
+                "tags": c.tags.split(",") if c.tags else [],
+                "createdAt": dt_to_ms(c.created_at)
+            } for c in cards
+        ],
+        "reviewLogs": [
+            {
+                "id": l.id,
+                "flashcardId": l.flashcard_id,
+                "grade": l.grade,
+                "state": l.state,
+                "reviewedAt": dt_to_ms(l.reviewed_at),
+                "synced": True
+            } for l in logs
+        ]
+    }

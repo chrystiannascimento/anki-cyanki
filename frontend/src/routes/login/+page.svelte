@@ -2,6 +2,7 @@
     import { goto } from '$app/navigation';
     import { session } from '$lib/authStore';
     import { PUBLIC_API_URL } from '$env/static/public';
+    import { syncEngine } from '$lib/sync';
 
     let email = '';
     let password = '';
@@ -36,6 +37,9 @@
                 token: data.access_token,
                 email: email
             });
+
+            // Immediately pull remote server data
+            syncEngine.triggerSync();
 
             goto('/dashboard');
         } catch (e: any) {

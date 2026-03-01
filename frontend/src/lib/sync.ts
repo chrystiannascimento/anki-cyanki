@@ -1,5 +1,8 @@
 import { db } from './db';
 import { PUBLIC_API_URL } from '$env/static/public';
+import { writable } from 'svelte/store';
+
+export const isSyncingStore = writable(false);
 
 export class SyncEngine {
     private isSyncing = false;
@@ -19,6 +22,7 @@ export class SyncEngine {
     async triggerSync() {
         if (this.isSyncing || !navigator.onLine) return;
         this.isSyncing = true;
+        isSyncingStore.set(true);
 
         try {
             const pending = await db.syncQueue.orderBy('createdAt').toArray();
@@ -50,20 +54,40 @@ export class SyncEngine {
             console.error('Sync failed', error);
         } finally {
             this.isSyncing = false;
+            isSyncingStore.set(false);
         }
     }
 
     private async pullRemote() {
-        // Mock endpoint for pulling updates from server
-        /*
-        const lastSyncTimestamp = localStorage.getItem('lastSyncTimestamp') || '0';
-        const response = await fetch(`${API_BASE_URL}/api/sync/pull?since=${lastSyncTimestamp}`);
-        if (response.ok) {
-            const data = await response.json();
-            // apply remote changes locally to Dexie
-            localStorage.setItem('lastSyncTimestamp', Date.now().toString());
+        const token = localStorage.getItem('cyanki_token');
+        if (!token) return;
+
+        try {
+            const response = await fetch(`${PUBLIC_API_URL}/sync/pull`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+
+                // Intelligently UPSERT server data into local Dexie offline storage
+                await db.transaction('rw', db.notebooks, db.flashcards, db.reviewLogs, async () => {
+                    if (data.notebooks && data.notebooks.length > 0) {
+                        await db.notebooks.bulkPut(data.notebooks);
+                    }
+                    if (data.flashcards && data.flashcards.length > 0) {
+                        await db.flashcards.bulkPut(data.flashcards);
+                    }
+                    if (data.reviewLogs && data.reviewLogs.length > 0) {
+                        await db.reviewLogs.bulkPut(data.reviewLogs);
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Remote pull failed', error);
         }
-        */
     }
 }
 

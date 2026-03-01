@@ -35,3 +35,30 @@ class SyncPushResponse(BaseModel):
     processed_count: int
     errors: List[dict] = []
 
+class PullNotebook(BaseModel):
+    id: str
+    title: str
+    content: str
+    isPublic: bool
+    createdAt: int
+    updatedAt: int
+
+class PullFlashcard(BaseModel):
+    id: str
+    front: str
+    back: str
+    tags: List[str]
+    createdAt: int
+
+class PullReviewLog(BaseModel):
+    id: int
+    flashcardId: str
+    grade: int
+    state: int
+    reviewedAt: int
+    synced: bool
+
+class SyncPullResponse(BaseModel):
+    notebooks: List[PullNotebook]
+    flashcards: List[PullFlashcard]
+    reviewLogs: List[PullReviewLog]
