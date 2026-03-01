@@ -28,7 +28,8 @@ export async function parseAndInjectNotebookFlashcards(markdown: string) {
     }
 
     // Use a multiline regex to capture everything from Q: until the next Q: or End Of File
-    const flashcardRegex = /^Q:\s*(?:<!--\s*id:\s*([\w-]+)\s*-->\s*)?([^\n]+)\n^A:\s*([\s\S]+?)(?=\n^Q:|$)/gm;
+    // Captures ID in match[1], Front in match[2], Back in match[3], and Tags in match[4]
+    const flashcardRegex = /^Q:\s*(?:<!--\s*id:\s*([\w-]+)\s*-->\s*)?([^\n]+)\r?\n^A:\s*([\s\S]+?)(?:\r?\n^Tags:\s*([^\n]+))?(?=\r?\n^Q:|$)/gm;
 
     // Find all matches iteratively to reconstruct the string accurately
     let match;
@@ -46,12 +47,9 @@ export async function parseAndInjectNotebookFlashcards(markdown: string) {
         let backText = match[3].trim();
         let tagsArray: string[] = [];
 
-        // Check if backText ends with a Tags block
-        const tagsMatch = /(?:\r?\n)Tags:\s*(.+)$/i.exec(backText);
-        if (tagsMatch) {
-            tagsArray = tagsMatch[1].split(/[,]+|\s+/).filter((t: string) => t.trim() !== '');
-            // Rip the Tags string block off the base Answer text
-            backText = backText.substring(0, tagsMatch.index).trim();
+        const tagsString = match[4];
+        if (tagsString) {
+            tagsArray = tagsString.split(/[,|;|\s]+/).filter((t: string) => t.trim() !== '');
         }
 
         let injected = false;
