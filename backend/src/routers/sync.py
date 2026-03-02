@@ -38,7 +38,8 @@ async def push_sync(request: SyncPushRequest, db: AsyncSession = Depends(get_db)
                 elif op.action == "DELETE":
                     card = await db.get(Flashcard, str(op.entityId))
                     if card and card.user_id == current_user.id:
-                        await db.delete(card)
+                        card.is_deleted = True
+                        card.updated_at = datetime.datetime.utcnow()
                         
             elif op.entityType == "NOTEBOOK":
                 if op.action in ["CREATE", "UPDATE"]:
@@ -60,15 +61,26 @@ async def push_sync(request: SyncPushRequest, db: AsyncSession = Depends(get_db)
                 elif op.action == "DELETE":
                     book = await db.get(Notebook, str(op.entityId))
                     if book and book.user_id == current_user.id:
-                        await db.delete(book)
+                        book.is_deleted = True
+                        book.updated_at = datetime.datetime.utcnow()
                         
             elif op.entityType == "REVIEW_LOG":
                 if op.action == "CREATE":
+                    # Parse the injected explicit Payload ID rather than trusting the Local Dexie Auto-Increment entityId pointer
+                    f_id = str(op.payload.get("flashcardId"))
+                    
+                    # Convert the UNIX epoch into UTC timestamps for PostgreSQL
+                    reviewed_at_ms = op.payload.get("reviewedAt")
+                    r_time = datetime.datetime.utcnow()
+                    if reviewed_at_ms:
+                        r_time = datetime.datetime.utcfromtimestamp(reviewed_at_ms / 1000.0)
+
                     log = ReviewLog(
-                        flashcard_id=str(op.entityId),
+                        flashcard_id=f_id,
                         grade=op.payload.get("grade"),
                         state=op.payload.get("state"),
-                        user_id=current_user.id
+                        user_id=current_user.id,
+                        reviewed_at=r_time
                     )
                     db.add(log)
                     
@@ -106,6 +118,7 @@ async def pull_sync(db: AsyncSession = Depends(get_db), current_user: User = Dep
                 "title": b.title,
                 "content": b.content,
                 "isPublic": bool(b.is_public),
+                "isDeleted": bool(b.is_deleted),
                 "createdAt": dt_to_ms(b.created_at),
                 "updatedAt": dt_to_ms(b.updated_at)
             } for b in books
@@ -116,7 +129,9 @@ async def pull_sync(db: AsyncSession = Depends(get_db), current_user: User = Dep
                 "front": c.front,
                 "back": c.back,
                 "tags": c.tags.split(",") if c.tags else [],
-                "createdAt": dt_to_ms(c.created_at)
+                "isDeleted": bool(c.is_deleted),
+                "createdAt": dt_to_ms(c.created_at),
+                "updatedAt": dt_to_ms(c.updated_at)
             } for c in cards
         ],
         "reviewLogs": [

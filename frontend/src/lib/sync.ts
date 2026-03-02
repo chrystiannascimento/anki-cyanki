@@ -80,20 +80,38 @@ export class SyncEngine {
                     if (data.notebooks && data.notebooks.length > 0) {
                         const locals = await db.notebooks.toArray();
                         const localMap = new Map(locals.map(n => [n.id, n]));
-                        const safePuts = data.notebooks.filter((remote: any) => {
+                        const safePuts = [];
+
+                        for (const remote of data.notebooks) {
+                            if (remote.isDeleted) {
+                                await db.notebooks.delete(remote.id);
+                                continue;
+                            }
                             const local = localMap.get(remote.id);
-                            return !local || remote.updatedAt > local.updatedAt;
-                        });
+                            if (!local || remote.updatedAt > local.updatedAt) {
+                                safePuts.push(remote);
+                            }
+                        }
                         if (safePuts.length > 0) await db.notebooks.bulkPut(safePuts);
                     }
 
                     if (data.flashcards && data.flashcards.length > 0) {
                         const locals = await db.flashcards.toArray();
                         const localMap = new Map(locals.map(f => [f.id, f]));
-                        const safePuts = data.flashcards.filter((remote: any) => {
+                        const safePuts = [];
+
+                        for (const remote of data.flashcards) {
+                            if (remote.isDeleted) {
+                                await db.flashcards.delete(remote.id);
+                                continue;
+                            }
                             const local = localMap.get(remote.id);
-                            return !local || remote.createdAt > local.createdAt;
-                        });
+                            // Flashcards used fallback createdAt logic for comparisons previously.
+                            // Switching over to updatedAt for true remote diff-reconciliation.
+                            if (!local || (remote.updatedAt && remote.updatedAt > (local.createdAt || 0))) {
+                                safePuts.push(remote);
+                            }
+                        }
                         if (safePuts.length > 0) await db.flashcards.bulkPut(safePuts);
                     }
 

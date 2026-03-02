@@ -23,8 +23,9 @@ class Notebook(Base):
     title = Column(String, nullable=False)
     content = Column(Text, nullable=False)
     is_public = Column(Boolean, default=False)
+    is_deleted = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    updated_at = Column(DateTime)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     
     owner = relationship("User", back_populates="notebooks")
 
@@ -36,7 +37,9 @@ class Flashcard(Base):
     front = Column(Text, nullable=False)
     back = Column(Text, nullable=False)
     tags = Column(String) 
+    is_deleted = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     
     owner = relationship("User", back_populates="flashcards")
     reviews = relationship("ReviewLog", back_populates="flashcard")
