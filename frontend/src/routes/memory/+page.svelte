@@ -72,7 +72,7 @@
 
         <section class="bg-white dark:bg-neutral-800 p-6 rounded-2xl shadow ring-1 ring-neutral-200 dark:ring-neutral-700">
             <div class="mb-6">
-                <input bind:value={searchQuery} type="text" placeholder="Search by ID, Front, Back..." class="w-full p-4 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 focus:ring-2 focus:ring-red-500 outline-none transition" />
+                <input bind:value={searchQuery} type="text" placeholder="Search by ID, Front, Back..." class="w-full p-4 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 focus:ring-2 focus:ring-red-500 outline-none transition dark:text-white dark:placeholder-neutral-500" />
             </div>
 
             <div class="overflow-x-auto">
@@ -90,11 +90,11 @@
                         {#each filteredFlashcards as card (card.id)}
                             <tr class="hover:bg-neutral-50 dark:hover:bg-neutral-900/50 transition font-mono text-sm max-h-16">
                                 <td class="p-4 text-xs text-neutral-400 truncate max-w-[120px]">{card.id}</td>
-                                <td class="p-4 truncate max-w-xs">{card.front}</td>
-                                <td class="p-4 text-neutral-500 truncate max-w-xs">{card.back}</td>
+                                <td class="p-4 truncate max-w-xs text-neutral-800 dark:text-neutral-200">{card.front}</td>
+                                <td class="p-4 text-neutral-500 dark:text-neutral-400 truncate max-w-xs">{card.back}</td>
                                 <td class="p-4 text-neutral-400 text-xs truncate max-w-[100px]">{card.tags ? card.tags.join(', ') : ''}</td>
                                 <td class="p-4 text-right">
-                                    <button on:click={() => deleteCard(card.id)} class="text-red-500 hover:text-red-700 font-bold px-3 py-1 bg-red-50 dark:bg-red-900/20 rounded-lg transition border border-red-100 dark:border-red-900/30">Delete</button>
+                                    <button on:click={() => deleteCard(card.id)} class="text-red-500 hover:text-red-700 dark:hover:text-red-400 font-bold px-3 py-1 bg-red-50 dark:bg-red-900/20 rounded-lg transition border border-red-100 dark:border-red-900/30">Delete</button>
                                 </td>
                             </tr>
                         {/each}

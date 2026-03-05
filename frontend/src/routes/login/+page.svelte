@@ -133,7 +133,7 @@
             <form on:submit|preventDefault={handleLogin} class="space-y-5">
                 <div>
                     <label class="block text-sm font-semibold mb-1.5 text-neutral-700 dark:text-neutral-300">Email Address</label>
-                    <input bind:value={email} type="email" required placeholder="you@example.com" class="w-full p-3.5 rounded-xl bg-white dark:bg-neutral-800 border items-center border-neutral-200 dark:border-neutral-700 focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20 transition-all outline-none placeholder:text-neutral-400 dark:text-white" />
+                    <input bind:value={email} type="email" required placeholder="you@example.com" class="w-full p-3.5 rounded-xl bg-white dark:bg-neutral-800 border items-center border-neutral-200 dark:border-neutral-700 focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20 transition-all outline-none placeholder:text-neutral-400 dark:text-white dark:placeholder-neutral-500" />
                 </div>
                 
                 <div>
@@ -141,7 +141,7 @@
                         Password
                         <a href="#" class="text-indigo-600 dark:text-indigo-400 font-medium hover:underline">Forgot?</a>
                     </label>
-                    <input bind:value={password} type="password" required placeholder="••••••••" class="w-full p-3.5 rounded-xl bg-white dark:bg-neutral-800 border items-center border-neutral-200 dark:border-neutral-700 focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20 transition-all outline-none placeholder:text-neutral-400 dark:text-white" />
+                    <input bind:value={password} type="password" required placeholder="••••••••" class="w-full p-3.5 rounded-xl bg-white dark:bg-neutral-800 border items-center border-neutral-200 dark:border-neutral-700 focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20 transition-all outline-none placeholder:text-neutral-400 dark:text-white dark:placeholder-neutral-500" />
                 </div>
 
                 <button type="submit" disabled={isLoading} class="w-full py-3.5 mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-[0_4px_14px_0_rgba(79,70,229,0.39)] hover:shadow-[0_6px_20px_rgba(79,70,229,0.23)] transition-all transform active:scale-[0.98] disabled:opacity-70 disabled:active:scale-100 flex justify-center cursor-pointer">

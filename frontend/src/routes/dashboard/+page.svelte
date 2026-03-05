@@ -157,15 +157,15 @@
 			<div class="space-y-4">
 				<div>
 					<label class="block text-sm font-medium mb-1 dark:text-neutral-300">Front</label>
-					<textarea bind:value={front} class="w-full p-3 rounded-lg bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 focus:ring-2 focus:ring-indigo-500 transition-shadow outline-none resize-none" rows="2" placeholder="Question or term..."></textarea>
+					<textarea bind:value={front} class="w-full p-3 rounded-lg bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-shadow outline-none resize-none dark:text-white dark:placeholder-neutral-500" rows="2" placeholder="Question or term..."></textarea>
 				</div>
 				<div>
 					<label class="block text-sm font-medium mb-1 dark:text-neutral-300">Back</label>
-					<textarea bind:value={back} class="w-full p-3 rounded-lg bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 focus:ring-2 focus:ring-indigo-500 transition-shadow outline-none resize-none" rows="3" placeholder="Answer or explanation..."></textarea>
+					<textarea bind:value={back} class="w-full p-3 rounded-lg bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-shadow outline-none resize-none dark:text-white dark:placeholder-neutral-500" rows="3" placeholder="Answer or explanation..."></textarea>
 				</div>
 				<div>
 					<label class="block text-sm font-medium mb-1 dark:text-neutral-300">Tags (comma separated)</label>
-					<input bind:value={tags} type="text" class="w-full p-3 rounded-lg bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 focus:ring-2 focus:ring-indigo-500 transition-shadow outline-none" placeholder="e.g. math, geometry, #important" />
+					<input bind:value={tags} type="text" class="w-full p-3 rounded-lg bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-shadow outline-none dark:text-white dark:placeholder-neutral-500" placeholder="e.g. math, geometry, #important" />
 				</div>
 				<button on:click={addFlashcard} class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-md transition-all active:scale-[0.98] cursor-pointer">
 					Save Flashcard
@@ -176,7 +176,7 @@
 		<section class="space-y-4">
 			<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 			    <h2 class="text-2xl font-bold flex items-center gap-2">Your Deck <span class="text-indigo-600 bg-indigo-100 dark:bg-indigo-500/20 dark:text-indigo-400 text-xs px-2 py-1 rounded-full">{filteredFlashcards.length} cards</span></h2>
-			    <input bind:value={searchQuery} type="text" placeholder="Search cards & tags..." class="w-full sm:w-64 p-2.5 text-sm rounded-lg bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm transition-shadow" />
+			    <input bind:value={searchQuery} type="text" placeholder="Search cards & tags..." class="w-full sm:w-64 p-2.5 text-sm rounded-lg bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 outline-none shadow-sm transition-shadow dark:text-white dark:placeholder-neutral-500" />
 			</div>
 			
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">

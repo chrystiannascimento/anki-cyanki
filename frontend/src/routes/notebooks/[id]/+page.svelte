@@ -128,7 +128,7 @@
 			<textarea 
 				bind:value={content} 
 				on:input={handleInput}
-				class="flex-1 w-full bg-transparent resize-none outline-none font-mono text-sm leading-relaxed"
+				class="flex-1 w-full bg-transparent resize-none outline-none font-mono text-sm leading-relaxed dark:text-neutral-200 dark:placeholder-neutral-600"
 				placeholder="Start typing markdown here..."
 			></textarea>
 		</div>
@@ -138,7 +138,7 @@
 		    <div class="flex items-center justify-center p-4 border-b border-neutral-200 dark:border-neutral-700">
                 <div class="bg-neutral-100 dark:bg-neutral-900 rounded-full p-1 flex shadow-inner">
                     <button class="px-6 py-1.5 rounded-full text-sm font-semibold transition-all {viewMode === 'markdown' ? 'bg-white dark:bg-neutral-700 shadow text-indigo-600 dark:text-indigo-400' : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'}" on:click={() => viewMode = 'markdown'}>Markdown</button>
-                    <button class="px-6 py-1.5 rounded-full text-sm font-semibold transition-all {viewMode === 'flashcards' ? 'bg-white dark:bg-neutral-700 shadow text-indigo-600 dark:text-indigo-400' : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'}" on:click={() => viewMode = 'flashcards'}>Flashcards <span class="ml-1 bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-300 px-2 py-0.5 rounded-full text-xs">{sessionFlashcards.length}</span></button>
+                    <button class="px-6 py-1.5 rounded-full text-sm font-semibold transition-all {viewMode === 'flashcards' ? 'bg-white dark:bg-neutral-700 shadow text-indigo-600 dark:text-indigo-400' : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'}" on:click={() => viewMode = 'flashcards'}>Flashcards <span class="ml-1 bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400 px-2 py-0.5 rounded-full text-xs">{sessionFlashcards.length}</span></button>
                 </div>
 		    </div>
 		    

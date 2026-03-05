@@ -5,6 +5,8 @@
   --font-sans: "Inter", "Roboto", "Outfit", "Helvetica Neue", sans-serif;
 }
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer utilities {
   .scrollbar-hide::-webkit-scrollbar {
     display: none;

@@ -44,8 +44,9 @@
 	}
 </script>
 
-<div class="max-w-4xl mx-auto space-y-8 py-8">
-	<header class="flex items-center justify-between">
+<div class="min-h-screen bg-neutral-50 dark:bg-neutral-900 transition-colors">
+	<div class="max-w-4xl mx-auto space-y-8 py-8 px-4">
+		<header class="flex items-center justify-between">
 		<div>
 			<h1 class="text-3xl font-extrabold tracking-tight text-neutral-900 dark:text-white">Your Notebooks</h1>
 			<p class="text-neutral-500 mt-1">PKM connected directly to your Spaced Repetition engine.</p>
@@ -53,8 +54,8 @@
 		<a href="/" class="px-4 py-2 bg-neutral-100 dark:bg-neutral-800 rounded-lg text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 transition">Back to Home</a>
 	</header>
 
-	<section class="flex gap-4 p-6 bg-white dark:bg-neutral-800 rounded-2xl shadow-sm ring-1 ring-neutral-200 dark:ring-neutral-700">
-		<input bind:value={titleInput} type="text" placeholder="Notebook Title..." class="flex-1 p-3 rounded-lg bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 focus:ring-2 focus:ring-indigo-500 outline-none" />
+	<section class="flex flex-col sm:flex-row gap-4 p-6 bg-white dark:bg-neutral-800 rounded-2xl shadow-sm ring-1 ring-neutral-200 dark:ring-neutral-700">
+		<input bind:value={titleInput} type="text" placeholder="Notebook Title..." class="flex-1 p-3 rounded-lg bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 outline-none dark:text-white dark:placeholder-neutral-500" />
 		<button on:click={createNotebook} class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-md transition-all active:scale-[0.98]">
 			Create
 		</button>
@@ -73,9 +74,10 @@
 		{/each}
 		
 		{#if notebooks.length === 0}
-			<div class="col-span-full py-16 text-center text-neutral-400 border-2 border-dashed border-neutral-200 dark:border-neutral-800 rounded-2xl">
+			<div class="col-span-full py-16 text-center text-neutral-400 dark:text-neutral-500 border-2 border-dashed border-neutral-200 dark:border-neutral-700 rounded-2xl">
 				<p>No notebooks created yet. Build your knowledge base!</p>
 			</div>
 		{/if}
 	</section>
+	</div>
 </div>
