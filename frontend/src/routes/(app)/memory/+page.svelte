@@ -57,18 +57,17 @@
 
 <div class="min-h-screen bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 p-8">
     <div class="max-w-5xl mx-auto space-y-8">
-        <header class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
             <div>
                 <h1 class="text-3xl font-extrabold tracking-tight text-red-600 dark:text-red-400">Global Memory Manger</h1>
                 <p class="text-neutral-500 mt-2">Force wipe corrupted data, resolve ID duplication, and inspect raw items.</p>
             </div>
             <div class="flex gap-3">
-                <a href="/dashboard" class="px-5 py-2.5 bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 rounded-xl font-bold hover:bg-neutral-300 dark:hover:bg-neutral-700 transition">Dashboard</a>
                 <button on:click={wipeAll} class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-md shadow-red-500/20 transition cursor-pointer">
                     Nuke Database
                 </button>
             </div>
-        </header>
+        </div>
 
         <section class="bg-white dark:bg-neutral-800 p-6 rounded-2xl shadow ring-1 ring-neutral-200 dark:ring-neutral-700">
             <div class="mb-6">

@@ -27,12 +27,9 @@
 <div class="min-h-screen bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 p-8">
     <div class="max-w-2xl mx-auto space-y-8">
         
-        <header class="flex items-center gap-4">
-            <a href="/" class="p-2 bg-neutral-200 dark:bg-neutral-800 rounded-full hover:bg-neutral-300 transition">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-            </a>
+        <div class="mb-6">
             <h1 class="text-3xl font-extrabold tracking-tight">Profile & Preferences</h1>
-        </header>
+        </div>
 
         {#if $session.email}
             <section class="p-6 bg-white dark:bg-neutral-800 rounded-2xl shadow-sm ring-1 ring-neutral-200 dark:ring-neutral-700 flex items-center gap-4">

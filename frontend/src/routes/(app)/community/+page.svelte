@@ -51,13 +51,10 @@
 </script>
 
 <div class="max-w-4xl mx-auto space-y-8 py-8">
-	<header class="flex items-center justify-between">
-		<div>
-			<h1 class="text-3xl font-extrabold tracking-tight text-neutral-900 dark:text-white">Community Notes</h1>
-			<p class="text-neutral-500 mt-1">Discover public notebooks shared by other learners.</p>
-		</div>
-		<a href="/dashboard" class="px-4 py-2 bg-neutral-100 dark:bg-neutral-800 rounded-lg text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 transition">Back to Dashboard</a>
-	</header>
+	<div class="mb-6">
+		<h1 class="text-3xl font-extrabold tracking-tight text-neutral-900 dark:text-white">Community Notes</h1>
+		<p class="text-neutral-500 mt-1">Discover public notebooks shared by other learners.</p>
+	</div>
 
 	{#if loading}
 		<div class="py-16 text-center animate-pulse text-indigo-500 font-medium">Fetching public nodes...</div>

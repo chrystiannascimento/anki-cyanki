@@ -1,46 +1,82 @@
-export const gamificationState = {
+import { writable } from 'svelte/store';
+import { browser } from '$app/environment';
+
+export interface GamificationState {
+    xp: number;
+    level: number;
+    streak: number;
+    lastStudyDate: string | null;
+}
+
+const defaultState: GamificationState = {
     xp: 0,
     level: 1,
     streak: 0,
-    lastStudyDate: null as string | null
+    lastStudyDate: null
 };
 
-export function addXP(amount: number) {
-    gamificationState.xp += amount;
-    // Simple level up logic: 100 XP per level
-    while (gamificationState.xp >= 100) {
-        gamificationState.xp -= 100;
-        gamificationState.level += 1;
+const getInitialState = (): GamificationState => {
+    if (browser) {
+        const stored = localStorage.getItem('cyanki_gamification');
+        if (stored) {
+            try {
+                return JSON.parse(stored);
+            } catch (e) {
+                console.error("Failed to parse gamification state", e);
+            }
+        }
     }
+    return defaultState;
+};
+
+export const gamificationStore = writable<GamificationState>(getInitialState());
+
+gamificationStore.subscribe(value => {
+    if (browser) {
+        localStorage.setItem('cyanki_gamification', JSON.stringify(value));
+    }
+});
+
+export function addXP(amount: number) {
+    gamificationStore.update(state => {
+        let { xp, level, streak, lastStudyDate } = state;
+        xp += amount;
+        while (xp >= 100) {
+            xp -= 100;
+            level += 1;
+        }
+        return { xp, level, streak, lastStudyDate };
+    });
 }
 
 export function checkStreak() {
-    const todayStr = new Date().toDateString();
+    gamificationStore.update(state => {
+        let { xp, level, streak, lastStudyDate } = state;
+        const todayStr = new Date().toDateString();
 
-    if (!gamificationState.lastStudyDate) {
-        gamificationState.streak = 1;
-        gamificationState.lastStudyDate = new Date().toISOString();
-        return;
-    }
+        if (!lastStudyDate) {
+            streak = 1;
+            lastStudyDate = new Date().toISOString();
+            return { xp, level, streak, lastStudyDate };
+        }
 
-    const lastDate = new Date(gamificationState.lastStudyDate);
-    const lastDateStr = lastDate.toDateString();
+        const lastDate = new Date(lastStudyDate);
+        const lastDateStr = lastDate.toDateString();
 
-    if (todayStr === lastDateStr) {
-        // Already studied today
-        return;
-    }
+        if (todayStr === lastDateStr) {
+            return state; // Already studied today
+        }
 
-    // Check if yesterday
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
 
-    if (lastDateStr === yesterday.toDateString()) {
-        gamificationState.streak += 1;
-    } else {
-        // Streak broken
-        gamificationState.streak = 1;
-    }
+        if (lastDateStr === yesterday.toDateString()) {
+            streak += 1;
+        } else {
+            streak = 1; // broken
+        }
 
-    gamificationState.lastStudyDate = new Date().toISOString();
+        lastStudyDate = new Date().toISOString();
+        return { xp, level, streak, lastStudyDate };
+    });
 }

@@ -35,21 +35,31 @@ export interface Notebook {
     updatedAt: number;
 }
 
+export interface LeaderboardEntry {
+    id: string; // userId
+    name: string;
+    xp: number;
+    position: number;
+    updatedAt: number;
+}
+
 export class CyankiDB extends Dexie {
     flashcards!: Table<Flashcard, string>;
     reviewLogs!: Table<ReviewLog, number>;
     syncQueue!: Table<SyncQueue, number>;
     notebooks!: Table<Notebook, string>;
+    leaderboard!: Table<LeaderboardEntry, string>;
 
     constructor() {
         super('cyanki_db');
 
         // Indexing: ++id (auto-increment), id (primary key), others are indexed for swift querying
-        this.version(2).stores({
+        this.version(3).stores({
             flashcards: 'id, *tags, createdAt',
             reviewLogs: '++id, flashcardId, reviewedAt, synced',
             syncQueue: '++id, action, entityType, createdAt',
-            notebooks: 'id, updatedAt, createdAt'
+            notebooks: 'id, updatedAt, createdAt',
+            leaderboard: 'id, position, xp'
         });
     }
 }
@@ -61,6 +71,7 @@ export async function clearCyankiData() {
         db.flashcards.clear(),
         db.reviewLogs.clear(),
         db.syncQueue.clear(),
-        db.notebooks.clear()
+        db.notebooks.clear(),
+        db.leaderboard.clear()
     ]);
 }

@@ -8,8 +8,11 @@ import src.models as models # Ensuring models are loaded into Base
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Auto-create tables for local testing
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as e:
+        print(f"Database initialization exception (safe to ignore if tables exist): {e}")
     yield
 
 app = FastAPI(title="Cyanki API", version="0.1.0", lifespan=lifespan)

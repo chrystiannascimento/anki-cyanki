@@ -76,7 +76,7 @@ export class SyncEngine {
                 const data = await response.json();
 
                 // Intelligently UPSERT server data resolving conflicts via Timestamps
-                await db.transaction('rw', db.notebooks, db.flashcards, db.reviewLogs, async () => {
+                await db.transaction('rw', db.notebooks, db.flashcards, db.reviewLogs, db.leaderboard, async () => {
                     if (data.notebooks && data.notebooks.length > 0) {
                         const locals = await db.notebooks.toArray();
                         const localMap = new Map(locals.map(n => [n.id, n]));
@@ -123,6 +123,12 @@ export class SyncEngine {
                             return !local; // Only insert structurally new review logs
                         });
                         if (safePuts.length > 0) await db.reviewLogs.bulkPut(safePuts);
+                    }
+
+                    if (data.leaderboard && data.leaderboard.length > 0) {
+                        // Leaderboard is typically fully replaced or upserted
+                        const safePuts = data.leaderboard;
+                        await db.leaderboard.bulkPut(safePuts);
                     }
                 });
             }

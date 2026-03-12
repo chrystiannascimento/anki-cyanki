@@ -46,13 +46,10 @@
 
 <div class="min-h-screen bg-neutral-50 dark:bg-neutral-900 transition-colors">
 	<div class="max-w-4xl mx-auto space-y-8 py-8 px-4">
-		<header class="flex items-center justify-between">
-		<div>
+		<div class="mb-6">
 			<h1 class="text-3xl font-extrabold tracking-tight text-neutral-900 dark:text-white">Your Notebooks</h1>
 			<p class="text-neutral-500 mt-1">PKM connected directly to your Spaced Repetition engine.</p>
 		</div>
-		<a href="/" class="px-4 py-2 bg-neutral-100 dark:bg-neutral-800 rounded-lg text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 transition">Back to Home</a>
-	</header>
 
 	<section class="flex flex-col sm:flex-row gap-4 p-6 bg-white dark:bg-neutral-800 rounded-2xl shadow-sm ring-1 ring-neutral-200 dark:ring-neutral-700">
 		<input bind:value={titleInput} type="text" placeholder="Notebook Title..." class="flex-1 p-3 rounded-lg bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 outline-none dark:text-white dark:placeholder-neutral-500" />

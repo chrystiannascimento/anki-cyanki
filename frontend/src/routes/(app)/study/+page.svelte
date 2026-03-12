@@ -1,13 +1,13 @@
 <script lang="ts">
     import { onMount, tick } from 'svelte';
     import { getDueCards, processReview, Rating } from '$lib/fsrs';
+    import { addXP, checkStreak } from '$lib/stores/gamification';
     import type { Flashcard } from '$lib/db';
     import { Confetti } from 'svelte-confetti';
     
     let dueCards: Flashcard[] = [];
     let currentIndex = 0;
     let showingAnswer = false;
-    let streak = 0; 
     let showConfetti = false;
     
     onMount(async () => {
@@ -25,7 +25,8 @@
 
         await processReview(currentCard.id, rating);
         
-        streak += 1; 
+        addXP(10);
+        checkStreak();
         showConfetti = false;
         await tick();
         showConfetti = true;
@@ -42,13 +43,7 @@
         </div>
     {/if}
 
-    <header class="absolute top-0 left-0 w-full p-6 flex justify-between items-center text-neutral-500 dark:text-neutral-400 z-10 font-medium">
-        <a href="/" class="hover:text-indigo-600 dark:hover:text-white transition">← Home</a>
-        <div class="flex items-center gap-2">
-            <span class="text-orange-500 text-xl {showConfetti ? 'animate-bounce' : ''}">🔥</span>
-            <span class="font-bold text-lg text-neutral-800 dark:text-white">{streak} Streak</span>
-        </div>
-    </header>
+    <div class="h-10 w-full mb-4"></div>
 
     {#if !currentCard && dueCards.length === 0}
         <div class="text-center animate-pulse text-neutral-500 dark:text-neutral-400">Loading due cards...</div>
