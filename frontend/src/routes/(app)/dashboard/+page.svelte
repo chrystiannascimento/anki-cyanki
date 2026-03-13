@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
-	import { db, type Flashcard } from '$lib/db';
+	import { db, type Flashcard, type SavedFilter, type ReviewLog } from '$lib/db';
 	import { syncEngine } from '$lib/sync';
 	import { getAllCardStates } from '$lib/fsrs';
 	import { nanoid } from 'nanoid';
@@ -15,13 +15,28 @@
 	let cardStates = new Map<string, any>();
 	let reviewsToday = 0;
 	let totalReviews = 0;
+	let allReviewLogs: ReviewLog[] = [];
 	
 	let searchQuery = '';
 	let sortBy = 'due';
 	let currentPage = 1;
 	const itemsPerPage = 10;
 
-	$: filteredFlashcards = flashcards.filter(c => 
+	// UC-06 Workspace Filtering
+	let savedFilters: SavedFilter[] = [];
+	let activeWorkspaceId = 'all'; // 'all' means Global Memory
+
+	// Filter logic for the dashboard deck
+	$: workspaceFlashcards = flashcards.filter(card => {
+		if (activeWorkspaceId === 'all') return true;
+		const activeFilter = savedFilters.find(f => f.id === activeWorkspaceId);
+		if (!activeFilter) return true;
+		
+		// Match ALL tags in the filter
+		return activeFilter.criteria.tags.every(tag => card.tags?.includes(tag));
+	});
+
+	$: filteredFlashcards = workspaceFlashcards.filter(c => 
 	    c.front.toLowerCase().includes(searchQuery.toLowerCase()) || 
 	    c.back.toLowerCase().includes(searchQuery.toLowerCase()) ||
 	    c.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -39,8 +54,27 @@
 	$: paginatedCards = filteredFlashcards.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 	$: totalPages = Math.ceil(filteredFlashcards.length / itemsPerPage);
 
+	// Dynamically calculate metrics based on the active workspace
+	$: {
+		if (activeWorkspaceId === 'all') {
+			totalReviews = allReviewLogs.length;
+			const today = new Date();
+			today.setHours(0,0,0,0);
+			reviewsToday = allReviewLogs.filter(l => l.reviewedAt >= today.getTime()).length;
+		} else {
+			// Find flashcards that belong to this workspace
+			const validCardIds = new Set(workspaceFlashcards.map(c => c.id));
+			const workspaceLogs = allReviewLogs.filter(l => validCardIds.has(l.flashcardId));
+			
+			totalReviews = workspaceLogs.length;
+			const today = new Date();
+			today.setHours(0,0,0,0);
+			reviewsToday = workspaceLogs.filter(l => l.reviewedAt >= today.getTime()).length;
+		}
+	}
+
 	// Reset pagination on search drop
-	$: if (searchQuery || sortBy) {
+	$: if (searchQuery || sortBy || activeWorkspaceId) {
 		currentPage = 1;
 	}
 
@@ -58,22 +92,21 @@
 			cardStates = await getAllCardStates();
 		});
 
-		const reviewsObservable = liveQuery(async () => {
-		    const logs = await db.reviewLogs.toArray();
-		    const today = new Date();
-		    today.setHours(0,0,0,0);
-		    const todayReviews = logs.filter(l => l.reviewedAt >= today.getTime());
-		    return { total: logs.length, today: todayReviews.length };
+		const reviewsObservable = liveQuery(() => db.reviewLogs.toArray());
+		const revSub = reviewsObservable.subscribe(logs => {
+		    allReviewLogs = logs;
+		    // The reactive block above will handle re-calculating the isolated metrics
 		});
-		
-		const revSub = reviewsObservable.subscribe(res => {
-		    totalReviews = res.total;
-		    reviewsToday = res.today;
+
+		const filterObservable = liveQuery(() => db.savedFilters.orderBy('createdAt').reverse().toArray());
+		const filterSub = filterObservable.subscribe(filters => {
+			savedFilters = filters;
 		});
 
 		return () => {
 		    subscription.unsubscribe();
 		    revSub.unsubscribe();
+			filterSub.unsubscribe();
 		}
 	});
 
@@ -125,26 +158,39 @@
 
 <div class="min-h-screen bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 p-8">
 	<div class="max-w-4xl mx-auto space-y-8">
-		<div>
-			<h1 class="text-3xl font-extrabold tracking-tight mb-2">Dashboard</h1>
-			<p class="text-neutral-500">Welcome back. Keep up the momentum!</p>
+		<div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+			<div>
+				<h1 class="text-3xl font-extrabold tracking-tight mb-2">Dashboard</h1>
+				<p class="text-neutral-500">Welcome back. Keep up the momentum!</p>
+			</div>
+			{#if savedFilters.length > 0}
+				<div class="flex flex-col">
+					<span class="text-xs font-bold text-neutral-500 mb-1">Active Workspace</span>
+					<select bind:value={activeWorkspaceId} class="p-2 rounded-xl text-sm font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer">
+						<option value="all">🌐 Global Memory</option>
+						{#each savedFilters as sf}
+							<option value={sf.id}>📁 {sf.name}</option>
+						{/each}
+					</select>
+				</div>
+			{/if}
 		</div>
 
 		<section class="grid grid-cols-1 md:grid-cols-3 gap-6">
 		    <div class="p-6 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl shadow-sm border border-indigo-100 dark:border-indigo-800/50 flex flex-col items-center justify-center transition-transform hover:scale-105 cursor-default">
-		        <span class="text-4xl font-black text-indigo-600 dark:text-indigo-400 mb-2">{flashcards.length}</span>
-		        <span class="text-xs text-indigo-800/70 dark:text-indigo-300 font-extrabold uppercase tracking-widest">Global Memory</span>
+		        <span class="text-4xl font-black text-indigo-600 dark:text-indigo-400 mb-2">{workspaceFlashcards.length}</span>
+		        <span class="text-xs text-indigo-800/70 dark:text-indigo-300 font-extrabold uppercase tracking-widest text-center">{activeWorkspaceId === 'all' ? 'Global Cards' : 'Workspace Cards'}</span>
 		    </div>
 		    <a href="/history" class="p-6 bg-orange-50 dark:bg-orange-900/20 rounded-2xl shadow-sm border border-orange-100 dark:border-orange-800/50 flex flex-col items-center justify-center transition-transform hover:scale-105 cursor-pointer relative group">
 		        <span class="text-4xl font-black text-orange-600 dark:text-orange-400 mb-2">{reviewsToday}</span>
-		        <span class="text-xs text-orange-800/70 dark:text-orange-300 font-extrabold uppercase tracking-widest">Reviews Today</span>
+		        <span class="text-xs text-orange-800/70 dark:text-orange-300 font-extrabold uppercase tracking-widest text-center">Reviews Today</span>
 		        <div class="absolute inset-0 bg-orange-500/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center backdrop-blur-[1px]">
 		            <span class="font-bold text-orange-700 dark:text-orange-300">View History &rarr;</span>
 		        </div>
 		    </a>
 		    <div class="p-6 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl shadow-sm border border-emerald-100 dark:border-emerald-800/50 flex flex-col items-center justify-center transition-transform hover:scale-105 cursor-default">
 		        <span class="text-4xl font-black text-emerald-600 dark:text-emerald-400 mb-2">{totalReviews}</span>
-		        <span class="text-xs text-emerald-800/70 dark:text-emerald-300 font-extrabold uppercase tracking-widest">Total XP</span>
+		        <span class="text-xs text-emerald-800/70 dark:text-emerald-300 font-extrabold uppercase tracking-widest text-center">Workspace XP</span>
 		    </div>
 		</section>
 

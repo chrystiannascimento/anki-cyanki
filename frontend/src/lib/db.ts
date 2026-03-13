@@ -43,23 +43,44 @@ export interface LeaderboardEntry {
     updatedAt: number;
 }
 
+export interface SavedFilter {
+    id: string; // NanoID
+    name: string; // User defined name for the filter
+    criteria: {
+        tags: string[]; // e.g., ["direito", "constitucional"]
+        keyword?: string; // e.g., "mandado de injunção"
+        difficulty?: string; // e.g., "all", "easy", "medium", "hard"
+        states?: number[]; // e.g., FSRS states [0, 1, 2, 3]
+    };
+    createdAt: number;
+}
+
 export class CyankiDB extends Dexie {
     flashcards!: Table<Flashcard, string>;
     reviewLogs!: Table<ReviewLog, number>;
     syncQueue!: Table<SyncQueue, number>;
     notebooks!: Table<Notebook, string>;
     leaderboard!: Table<LeaderboardEntry, string>;
+    savedFilters!: Table<SavedFilter, string>;
 
     constructor() {
         super('cyanki_db');
 
         // Indexing: ++id (auto-increment), id (primary key), others are indexed for swift querying
-        this.version(3).stores({
+        this.version(5).stores({
             flashcards: 'id, *tags, createdAt',
             reviewLogs: '++id, flashcardId, reviewedAt, synced',
             syncQueue: '++id, action, entityType, createdAt',
             notebooks: 'id, updatedAt, createdAt',
-            leaderboard: 'id, position, xp'
+            leaderboard: 'id, position, xp',
+            savedFilters: 'id, name, createdAt'
+        }).upgrade(tx => {
+            // Future-proofing: Upgrade hook for v4 to v5
+            return tx.table('savedFilters').toCollection().modify(filter => {
+                if (filter.criteria && typeof filter.criteria.difficulty === 'undefined') {
+                    filter.criteria.difficulty = 'all';
+                }
+            });
         });
     }
 }
@@ -72,6 +93,7 @@ export async function clearCyankiData() {
         db.reviewLogs.clear(),
         db.syncQueue.clear(),
         db.notebooks.clear(),
-        db.leaderboard.clear()
+        db.leaderboard.clear(),
+        db.savedFilters.clear()
     ]);
 }
