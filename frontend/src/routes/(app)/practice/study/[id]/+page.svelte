@@ -3,7 +3,7 @@
     import { onMount, tick } from 'svelte';
     import { db, type Flashcard, type SavedFilter } from '$lib/db';
     import { getAllCardStates, processReview, Rating } from '$lib/fsrs';
-    import { addXP, checkStreak } from '$lib/stores/gamification';
+    import { addXP, addCoins, checkStreak } from '$lib/stores/gamification';
     import { goto } from '$app/navigation';
     import snarkdown from 'snarkdown';
     import { Confetti } from 'svelte-confetti';
@@ -99,6 +99,7 @@
         
         // Trigger generic gamification
         addXP(10);
+        addCoins(1); // UC-10: 1 coin per FSRS review for mini-game economy
         checkStreak();
         
         showConfetti = false;

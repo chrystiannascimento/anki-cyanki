@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount, tick } from 'svelte';
     import { getDueCards, processReview, Rating } from '$lib/fsrs';
-    import { addXP, checkStreak } from '$lib/stores/gamification';
+    import { addXP, addCoins, checkStreak } from '$lib/stores/gamification';
     import type { Flashcard } from '$lib/db';
     import { Confetti } from 'svelte-confetti';
     
@@ -26,6 +26,7 @@
         await processReview(currentCard.id, rating);
         
         addXP(10);
+        addCoins(1); // UC-10: 1 coin per FSRS review for mini-game economy
         checkStreak();
         showConfetti = false;
         await tick();

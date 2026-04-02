@@ -245,10 +245,45 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 ---
 
 #### UC-10 — Mini-Games Educativos e Economia de Pontos
-**Status:** ❌ Não Implementado
+**Status:** ✅ Implementado
 
 **Ator:** Estudante  
-**Previsto:** Mini-games educativos (desafios cronometrados, jogo da memória) desbloqueados via XP ganho em sessões FSRS. Economia circular que incentiva disciplina de revisão.
+**Rota Frontend:** `/games` (lobby), `/games/timed`, `/games/memory`
+
+**Descrição:** Mini-games educativos desbloqueados via moedas ganhas exclusivamente em sessões FSRS. A economia é circular: estudar ganha moedas, moedas desbloqueiam jogos, jogos reforçam o conteúdo estudado.
+
+**Economia de Moedas (`gamification.ts`):**
+- `addCoins(1)` — chamado em toda revisão FSRS (Study, Notebooks/study, Practice/study)
+- `spendCoins(amount)` — deduz e retorna `true` se saldo suficiente, `false` caso contrário
+- `coins` persiste no `localStorage` junto com XP/level/streak
+- Usuários existentes recebem `coins: 0` via backfill automático
+
+**Lobby (`/games`):**
+- Exibe saldo de moedas em destaque
+- Cards de cada jogo com: custo, ícone, descrição, barra de progresso até o custo quando bloqueado
+- Botão "Jogar Agora" ativo apenas com moedas suficientes
+- Orientação para ganhar moedas quando saldo = 0
+
+**Desafio Cronometrado (`/games/timed`):**
+- Custo: **30 moedas** para jogar
+- Regra: responder o máximo de flashcards em **60 segundos**
+- Interface: timer com barra colorida (verde→âmbar→vermelho nos últimos 10s), placar de acertos/erros em tempo real
+- Cada acerto devolve **1 moeda**; fila infinita (embaralha de novo ao esgotar)
+- Atalhos de teclado: `Espaço` → revelar, `←/F` → errei, `→/J` → acertei
+- Tela de resultado com acertos, erros, precisão e moedas recuperadas
+
+**Jogo da Memória (`/games/memory`):**
+- Custo: **50 moedas** para jogar
+- Regra: encontrar **4 pares** de Pergunta + Resposta em grade 4×2
+- Mecânica: virar 2 tiles por vez; match → tiles ficam verdes; erro → tiles viram de volta após 600ms
+- Completar o tabuleiro devolve **20 moedas** e registra tempo e jogadas
+- Feedback visual: anel de progresso, tiles animados com scale
+
+**Integração de moedas nas páginas de estudo:**
+- [study/+page.svelte](frontend/src/routes/(app)/study/+page.svelte) — `addCoins(1)` após cada revisão
+- [notebooks/study/[id]/+page.svelte](frontend/src/routes/(app)/notebooks/study/[id]/+page.svelte) — idem
+- [practice/study/[id]/+page.svelte](frontend/src/routes/(app)/practice/study/[id]/+page.svelte) — idem
+- Link **"Mini-Games"** adicionado ao Sidebar
 
 ---
 

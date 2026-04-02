@@ -4,7 +4,7 @@
     import { db, type Flashcard } from '$lib/db';
     import { parseAndInjectNotebookFlashcards } from '$lib/notebookParser';
     import { getAllCardStates, processReview, Rating } from '$lib/fsrs';
-    import { addXP, checkStreak } from '$lib/stores/gamification';
+    import { addXP, addCoins, checkStreak } from '$lib/stores/gamification';
     import { goto } from '$app/navigation';
     import snarkdown from 'snarkdown';
     import { Confetti } from 'svelte-confetti';
@@ -72,6 +72,7 @@
 
         await processReview(currentCard.id, rating);
         addXP(10);
+        addCoins(1); // UC-10: 1 coin per FSRS review for mini-game economy
         checkStreak();
         
         showConfetti = false;
