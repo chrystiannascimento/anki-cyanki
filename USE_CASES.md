@@ -213,10 +213,34 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 ---
 
 #### UC-09 — Mestria e Níveis de Proficiência
-**Status:** ❌ Não Implementado
+**Status:** ✅ Implementado
 
 **Ator:** Estudante  
-**Previsto:** Níveis Iniciante → Familiarizado → Proficiente → Mestre por tópico. Cálculo dinâmico considerando acertos recentes, peso de dificuldade e decaimento por tempo sem prática. Anéis de progresso visuais na interface que regridem com inatividade.
+**Rota Frontend:** `/mastery`  
+**Módulo:** `frontend/src/lib/mastery.ts`
+
+**Descrição:** O sistema calcula um score de mestria (0–100) por tag/tópico, considerando acurácia recente, cobertura dos cards e decaimento por inatividade. Anéis de progresso SVG regridem visualmente quando o estudante para de revisar um tópico.
+
+**Fórmula de Cálculo (`mastery.ts`):**
+- `accuracy` = (Good + Easy) / total revisões nos últimos 30 dias × 100
+- `coverage` = cards revistos ao menos 1x / total cards com a tag × 100
+- `decayFactor` = 1.0 se última revisão < 14 dias; decai linearmente até 0 em 44 dias
+- `rawScore` = accuracy × coverage × decayFactor (normalizado 0–100)
+- Gate: se totalReviews < 5, score é limitado a 24 (permanece em Iniciante)
+
+**Níveis:**
+- 0–24 → **Iniciante** (cinza)
+- 25–49 → **Familiarizado** (azul-céu)
+- 50–74 → **Proficiente** (violeta)
+- 75–100 → **Mestre** (âmbar/ouro)
+
+**Features da página `/mastery`:**
+- KPI cards clicáveis: média geral (anel), contagem por nível (filtro ao clicar)
+- Banner de alerta quando tópicos estão em decaimento por inatividade
+- Grid de cards por tag com: anel SVG animado, badge de nível, stats (acerto %, cobertura %, total cards), data da última revisão, aviso de decay
+- Indicador laranja no anel quando o tópico está decaindo (>14 dias sem revisão)
+- Filtro por nível (pills) + busca por nome de tag
+- Navegação via Sidebar: link "Mestria" com ícone de badge/shield
 
 ---
 
