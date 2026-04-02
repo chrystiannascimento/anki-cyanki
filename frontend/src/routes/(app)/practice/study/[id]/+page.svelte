@@ -4,6 +4,7 @@
     import { db, type Flashcard, type SavedFilter } from '$lib/db';
     import { getAllCardStates, processReview, Rating } from '$lib/fsrs';
     import { addXP, addCoins, checkStreak } from '$lib/stores/gamification';
+    import { saveSession, clearSession } from '$lib/stores/sessionContext';
     import { goto } from '$app/navigation';
     import snarkdown from 'snarkdown';
     import { Confetti } from 'svelte-confetti';
@@ -83,6 +84,16 @@
 
         dueCards = overdueCards;
         isLoading = false;
+
+        // UC-11: Save session context so the dashboard widget can offer to resume
+        saveSession({
+            type: 'practice',
+            id: filterId,
+            name: filterName,
+            cardIndex: 0,
+            totalCards: dueCards.length,
+            savedAt: Date.now()
+        });
     }
 
     $: currentCard = dueCards[currentIndex];
@@ -96,12 +107,22 @@
 
         // Process natively with the Cyanki FSRS Engine
         await processReview(currentCard.id, rating);
-        
+
         // Trigger generic gamification
         addXP(10);
         addCoins(1); // UC-10: 1 coin per FSRS review for mini-game economy
         checkStreak();
-        
+
+        // UC-11: Update persisted card index for resume widget
+        saveSession({
+            type: 'practice',
+            id: filterId,
+            name: filterName,
+            cardIndex: currentIndex + 1,
+            totalCards: dueCards.length,
+            savedAt: Date.now()
+        });
+
         showConfetti = false;
         await tick();
         showConfetti = true;
@@ -111,6 +132,7 @@
     }
 
     function finishSession() {
+        clearSession(); // UC-11: Session completed — clear resume context
         goto('/practice/questions');
     }
 

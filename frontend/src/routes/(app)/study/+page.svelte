@@ -2,16 +2,25 @@
     import { onMount, tick } from 'svelte';
     import { getDueCards, processReview, Rating } from '$lib/fsrs';
     import { addXP, addCoins, checkStreak } from '$lib/stores/gamification';
+    import { saveSession, clearSession } from '$lib/stores/sessionContext';
     import type { Flashcard } from '$lib/db';
     import { Confetti } from 'svelte-confetti';
-    
+
     let dueCards: Flashcard[] = [];
     let currentIndex = 0;
     let showingAnswer = false;
     let showConfetti = false;
-    
+
     onMount(async () => {
         dueCards = await getDueCards(10);
+        // UC-11: Save global study session context
+        saveSession({
+            type: 'global',
+            name: 'Estudo Global',
+            cardIndex: 0,
+            totalCards: dueCards.length,
+            savedAt: Date.now()
+        });
     });
 
     $: currentCard = dueCards[currentIndex];
@@ -24,10 +33,20 @@
         if (!currentCard) return;
 
         await processReview(currentCard.id, rating);
-        
+
         addXP(10);
         addCoins(1); // UC-10: 1 coin per FSRS review for mini-game economy
         checkStreak();
+
+        // UC-11: Update persisted card index for resume widget
+        saveSession({
+            type: 'global',
+            name: 'Estudo Global',
+            cardIndex: currentIndex + 1,
+            totalCards: dueCards.length,
+            savedAt: Date.now()
+        });
+
         showConfetti = false;
         await tick();
         showConfetti = true;

@@ -292,11 +292,21 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 ---
 
 #### UC-11 — Estudo Contínuo e Gamificação (Streak)
-**Status:** ⚠️ Parcialmente Implementado
+**Status:** ✅ Implementado
 
 **Ator:** Estudante  
-**Implementado:** Streak diário rastreado (`lastStudyDate`, persistido no localStorage); XP por revisão (10 XP/card); nível baseado em XP acumulado (100 XP/nível); confetti ao completar cards  
-**Não Implementado:** Widget de "continuar de onde parou" na tela inicial; restauração automática de contexto (posição em sessão, filtros ativos, índice de card)
+**Módulos:** `frontend/src/lib/stores/sessionContext.ts`, `frontend/src/routes/(app)/dashboard/+page.svelte`
+
+**Implementado:**
+- Streak diário rastreado (`lastStudyDate`, persistido no localStorage); XP por revisão (10 XP/card); nível baseado em XP acumulado (100 XP/nível); confetti ao completar cards
+- **Widget "Continuar de onde parou"** no Dashboard: exibe o nome do último filtro/caderno/estudo global, progresso (cards revisados / total), tempo relativo ("há 3h"), botão "Continuar →" e botão de dismiss (×)
+- **Persistência de contexto de sessão** (`sessionContext.ts`): store `lastSession` (writable) com `type`, `id`, `name`, `cardIndex`, `totalCards`, `savedAt` — persiste no localStorage
+- `saveSession()` — chamado em `onMount` (após carga) e após cada `rateCard` nos 3 estudos FSRS
+- `clearSession()` — chamado em `finishSession()` quando a sessão é concluída normalmente
+- `getResumeUrl(ctx)` — gera URL correta por tipo (`/practice/study/[id]`, `/notebooks/study/[id]`, `/study`)
+- `timeAgo(timestamp)` — formata tempo relativo em português ("agora mesmo", "há 5 min", "há 2h", "há 1 dia")
+- **Painel de Gamificação** no Dashboard: 4 cards com Sequência 🔥, Nível, XP e Moedas 🪙 (visível apenas quando streak > 0 ou level > 1)
+- Widget de resume expira após 24 horas de inatividade (condição: `Date.now() - savedAt < 86_400_000`)
 
 ---
 
