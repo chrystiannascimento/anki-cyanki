@@ -55,6 +55,17 @@ export interface SavedFilter {
     createdAt: number;
 }
 
+// UC-02: Dynamic media (images in flashcard/notebook content) stored as Blobs
+// Avoids Base64 overhead and gives fine-grained storage control
+export interface MediaCacheEntry {
+    url: string;          // Original URL — primary key
+    blob: Blob;           // Raw binary stored natively in IndexedDB
+    mimeType: string;
+    size: number;         // Bytes
+    cachedAt: number;     // Unix timestamp ms
+    flashcardId?: string; // Optional association for pruning by card
+}
+
 export class CyankiDB extends Dexie {
     flashcards!: Table<Flashcard, string>;
     reviewLogs!: Table<ReviewLog, number>;
@@ -62,6 +73,7 @@ export class CyankiDB extends Dexie {
     notebooks!: Table<Notebook, string>;
     leaderboard!: Table<LeaderboardEntry, string>;
     savedFilters!: Table<SavedFilter, string>;
+    mediaCache!: Table<MediaCacheEntry, string>;
 
     constructor() {
         super('cyanki_db');
@@ -82,6 +94,11 @@ export class CyankiDB extends Dexie {
                 }
             });
         });
+
+        // v6: add mediaCache table for Blob storage of dynamic media (UC-02)
+        this.version(6).stores({
+            mediaCache: 'url, cachedAt, flashcardId'
+        });
     }
 }
 
@@ -94,6 +111,7 @@ export async function clearCyankiData() {
         db.syncQueue.clear(),
         db.notebooks.clear(),
         db.leaderboard.clear(),
-        db.savedFilters.clear()
+        db.savedFilters.clear(),
+        db.mediaCache.clear()
     ]);
 }

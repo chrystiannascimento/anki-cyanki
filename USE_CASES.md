@@ -79,17 +79,33 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 ---
 
 #### UC-02 — Armazenamento Separado para Conteúdo Offline
-**Status:** ⚠️ Parcialmente Implementado
+**Status:** ✅ Implementado
 
 **Ator:** Sistema  
-**Implementado:** IndexedDB via Dexie para todos os dados estruturados (flashcards, cadernos, review logs, fila de sync, leaderboard, filtros salvos)  
-**Não Implementado:** Separação explícita de assets estáticos no Cache API; armazenamento de mídias dinâmicas como Blobs no IndexedDB; controle de espaço e limpeza de pacotes antigos
+**Módulos:** `frontend/src/lib/mediaCache.ts`, `frontend/src/lib/db.ts` (tabela `mediaCache`), `frontend/vite.config.ts` (Workbox runtime caching)
+
+**Descrição:** O sistema separa o armazenamento offline em duas camadas: (1) assets estáticos de interface (JS, CSS, ícones, fontes) armazenados no Cache API pelo Service Worker via Workbox; (2) mídias dinâmicas (imagens referenciadas em flashcards e cadernos) armazenadas nativamente como Blobs no IndexedDB via tabela `mediaCache`, evitando o overhead de 33 % do Base64 e permitindo controle refinado de espaço.
 
 **Fluxo Principal:**
-1. Assets estáticos (UI) → Cache API (Service Worker) — *não implementado*
+1. Assets estáticos (UI) → Cache API via Workbox `generateSW` (precache + runtime CacheFirst) — *implementado*
 2. Dados estruturados → IndexedDB via Dexie — *implementado*
-3. Mídias dinâmicas (imagens de questões) → Blob no IndexedDB — *não implementado*
-4. Metadados de controle de espaço → *não implementado*
+3. Mídias dinâmicas (imagens em Markdown) → `cacheMediaFromMarkdown()` → Blob no IndexedDB (`mediaCache`) — *implementado*
+4. Controle de espaço → `getStorageInfo()` retorna usage/quota/percent/mediaCacheSize; `pruneOldMedia()` remove entradas antigas — *implementado*
+
+**API pública (`mediaCache.ts`):**
+- `cacheMedia(url, flashcardId?)` — baixa e persiste um URL como Blob
+- `cacheMediaFromMarkdown(content, flashcardId?)` — extrai URLs de Markdown/HTML e cacheia em lote
+- `resolveMediaUrl(url)` — retorna Object URL do Blob local ou URL original como fallback
+- `getStorageInfo()` — retorna `{ usage, quota, percent, mediaCacheSize, mediaCacheCount }`
+- `pruneOldMedia(maxAgeMs?)` — remove entradas com mais de 30 dias (configurável)
+- `pruneMediaForCard(flashcardId)` — remove mídias órfãs ao deletar um card
+- `clearMediaCache()` — limpa toda a tabela
+
+**Workbox (Cache API):**
+- Precache: `**/*.{js,css,html,ico,png,svg,webp,woff2}`
+- Runtime `NetworkFirst` para `/api/` com timeout 10s e cache de 5 min
+- Runtime `CacheFirst` para imagens externas (30 dias, 150 entradas max)
+- Runtime `CacheFirst` para Google Fonts (1 ano)
 
 ---
 
