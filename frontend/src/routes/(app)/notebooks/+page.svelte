@@ -64,9 +64,18 @@
 			    <button on:click={() => deleteNotebook(notebook.id)} class="absolute top-4 right-4 text-neutral-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">Delete</button>
 				<h3 class="font-bold text-xl mb-2 text-neutral-800 dark:text-neutral-100">{notebook.title}</h3>
 				<p class="text-neutral-500 dark:text-neutral-400 text-sm mb-6">Last edited: {new Date(notebook.updatedAt).toLocaleDateString()}</p>
-				<a href="/notebooks/{notebook.id}" class="inline-block px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-semibold rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors">
-					Open Editor
-				</a>
+				<div class="flex flex-col md:flex-row gap-2">
+				   <a href="/notebooks/{notebook.id}" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-semibold rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors w-full md:w-auto">
+				       Editor Markdown
+				   </a>
+				   <a href="/notebooks/solve/{notebook.id}" class="inline-flex items-center justify-center px-4 py-2 bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700 hover:bg-neutral-200 font-bold rounded-lg text-sm transition-colors shadow-sm w-full md:w-auto">
+                        Resolver Prática
+                   </a>
+                   <a href="/notebooks/study/{notebook.id}" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white dark:bg-indigo-500 dark:hover:bg-indigo-400 hover:bg-indigo-500 font-bold rounded-lg text-sm transition-colors shadow-sm w-full md:w-auto gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        Estudar (FSRS)
+                   </a>
+				</div>
 			</div>
 		{/each}
 		

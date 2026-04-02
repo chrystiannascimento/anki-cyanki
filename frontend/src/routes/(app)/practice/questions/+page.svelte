@@ -384,10 +384,13 @@
                                          <span class="text-[10px] font-bold px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-500 rounded">+{sf.criteria.tags.length - 3}</span>
                                     {/if}
                                 </div>
-                                <div class="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-700 flex justify-end">
-                                    <a href={`/practice/solve/${sf.id}`} class="px-4 py-2 bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 dark:hover:bg-indigo-800/50 hover:bg-indigo-100 font-bold rounded-lg text-sm transition-colors flex items-center gap-1.5 shadow-sm">
-                                        Resolver Questões
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                                <div class="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-700 flex flex-col md:flex-row gap-2 justify-end">
+                                    <a href={`/practice/solve/${sf.id}`} class="px-4 py-2 bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700 hover:bg-neutral-200 font-bold rounded-lg text-sm transition-colors flex items-center justify-center gap-1.5 shadow-sm w-full md:w-auto">
+                                        Resolver Prática
+                                    </a>
+                                    <a href={`/practice/study/${sf.id}`} class="px-4 py-2 bg-indigo-600 text-white dark:bg-indigo-500 dark:hover:bg-indigo-400 hover:bg-indigo-500 font-bold rounded-lg text-sm transition-colors flex items-center justify-center gap-1.5 shadow-sm w-full md:w-auto">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                        Estudar Caderno (FSRS)
                                     </a>
                                 </div>
                             </div>
