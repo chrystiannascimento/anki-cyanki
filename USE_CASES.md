@@ -158,11 +158,21 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 ---
 
 #### UC-06 — Análise de Desempenho por Filtros Salvos
-**Status:** ⚠️ Parcialmente Implementado
+**Status:** ✅ Implementado
 
 **Ator:** Estudante  
-**Implementado:** Filtros podem ser salvos (`savedFilters` no Dexie) e reutilizados para iniciar sessões de estudo  
-**Não Implementado:** Dashboard de desempenho isolado por filtro salvo; gráficos de taxa de acerto específicos para cada filtro; evolução histórica por contexto de filtro
+**Rota Frontend:** `/practice/filter-stats/[filterId]`  
+**Acesso:** Botão "Ver Desempenho" em cada card de filtro salvo na aba "Filtros Salvos" de `/practice/questions`
+
+**Descrição:** Para cada filtro salvo, o sistema executa dinamicamente os critérios de filtro no banco local e calcula métricas isoladas para aquele contexto específico. O dashboard exibe taxa de acerto, volume de revisões, cobertura do caderno e distribuição de avaliações FSRS, tudo com seletor de período.
+
+**Funcionalidades:**
+- **Seletor de período:** 7 dias / 30 dias / 90 dias / Sempre — reativa sem recarregar a página
+- **KPIs:** Taxa de acerto (%) com barra de progresso colorida, total de revisões, cards revistos, cards nunca revistos
+- **Gráfico de atividade diária:** barras CSS com tooltip hover mostrando contagem do dia
+- **Distribuição de avaliações:** barras de progresso para Again / Hard / Good / Easy com percentuais
+- **Cobertura do caderno:** barra de progresso indicando % de cards do filtro que foram revisados no período, com alerta para cards não cobertos
+- **CTAs:** links diretos para Praticar (simples) e Estudar com FSRS a partir do dashboard
 
 ---
 
