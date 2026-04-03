@@ -311,10 +311,34 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 ---
 
 #### UC-12 — Criação de Desafios Comunitários
-**Status:** ❌ Não Implementado
+**Status:** ✅ Implementado
 
 **Ator:** Estudante  
-**Previsto:** Criar desafios com filtros personalizados (público/privado). Sistema seleciona questões aleatórias imutáveis. Desafio armazenado offline e publicado ao reconectar, com código único de compartilhamento.
+**Rotas Frontend:** `/community` (aba Desafios), `/community/create`, `/community/challenge/[code]`
+
+**Descrição:** Usuário cria desafios com filtros personalizados (tags + palavra-chave). O sistema sorteia questões aleatoriamente do acervo local e as congela em um snapshot imutável de IDs. Um código de 6 caracteres (alfanumérico, sem caracteres ambíguos) é gerado e pode ser compartilhado com outros estudantes. Desafios são armazenados offline no IndexedDB (tabela `challenges`, Dexie v7) e ficam disponíveis mesmo sem conexão.
+
+**Fluxo de criação (`/community/create`):**
+1. Usuário preenche título, descrição, filtros (tags, palavra-chave), quantidade de cards (5–20) e visibilidade (público/privado)
+2. Pré-visualização mostra cards sorteados — pode "sortear novamente" sem sair do wizard
+3. Confirmação cria o `Challenge` no Dexie com snapshot imutável de `cardIds`
+4. Código único gerado (6 chars, charset sem 0/O/1/I), verificada unicidade local
+
+**Fluxo de jogo (`/community/challenge/[code]`):**
+1. Busca desafio pelo código (case-insensitive) na tabela `challenges`
+2. Tela de apresentação: nome, descrição, total de questões, número de tentativas, critérios do filtro
+3. Jogo quiz: flip de card (front → revelar resposta) → marcar Acertei / Errei
+4. Teclado: `Espaço` = revelar, `←/F` = errei, `→/J` = acertei
+5. Tela de resultado: anel de progresso SVG com % de acerto, contagem acertos/erros, label de avaliação ("Excelente!", "Precisa melhorar"), botão reiniciar
+6. Ao finalizar: contador `attempts` incrementado no Dexie
+
+**Aba "Desafios" em `/community`:**
+- Busca por código no campo de texto (busca local)
+- Lista de desafios criados: título, código, visibilidade, stats (cards, tentativas, data), botão "Jogar"
+- Empty state com link direto para criação
+
+**Schema Dexie v7 (`Challenge`):**
+- `id` (NanoID), `code` (6-char, indexado), `title`, `description?`, `criteria` (tags+keyword), `cardIds[]` (snapshot imutável), `cardCount`, `isPublic`, `createdAt`, `attempts`, `synced`
 
 ---
 

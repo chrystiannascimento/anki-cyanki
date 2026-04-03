@@ -66,6 +66,29 @@ export interface MediaCacheEntry {
     flashcardId?: string; // Optional association for pruning by card
 }
 
+// UC-12: Community challenges — offline-first, shareable via 6-char code
+export interface Challenge {
+    id: string;                       // NanoID primary key
+    code: string;                     // 6-char uppercase sharing code (e.g. "X7K2M9")
+    title: string;
+    description?: string;
+    /** Filter criteria used to sample cards at creation time */
+    criteria: {
+        tags: string[];
+        keyword?: string;
+        difficulty?: string;
+    };
+    /** Immutable snapshot of card IDs selected at creation — never changes after creation */
+    cardIds: string[];
+    cardCount: number;
+    isPublic: boolean;
+    createdAt: number;
+    /** Number of times the challenge was attempted locally */
+    attempts: number;
+    /** Whether it has been pushed to the server sync queue */
+    synced: boolean;
+}
+
 export class CyankiDB extends Dexie {
     flashcards!: Table<Flashcard, string>;
     reviewLogs!: Table<ReviewLog, number>;
@@ -74,6 +97,7 @@ export class CyankiDB extends Dexie {
     leaderboard!: Table<LeaderboardEntry, string>;
     savedFilters!: Table<SavedFilter, string>;
     mediaCache!: Table<MediaCacheEntry, string>;
+    challenges!: Table<Challenge, string>;
 
     constructor() {
         super('cyanki_db');
@@ -99,6 +123,11 @@ export class CyankiDB extends Dexie {
         this.version(6).stores({
             mediaCache: 'url, cachedAt, flashcardId'
         });
+
+        // v7: add challenges table for community challenges (UC-12)
+        this.version(7).stores({
+            challenges: 'id, code, createdAt, isPublic, synced'
+        });
     }
 }
 
@@ -112,6 +141,7 @@ export async function clearCyankiData() {
         db.notebooks.clear(),
         db.leaderboard.clear(),
         db.savedFilters.clear(),
-        db.mediaCache.clear()
+        db.mediaCache.clear(),
+        db.challenges.clear()
     ]);
 }
