@@ -810,10 +810,49 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 ---
 
 #### UC-26 — Controle de Privacidade e Exclusão de Conta
-**Status:** ❌ Não Implementado
+**Status:** ✅ Implementado
 
 **Ator:** Estudante  
-**Previsto:** Painel de privacidade (LGPD); visualização de dados coletados; exclusão parcial (apenas histórico) ou total da conta; exclusão total remove dados do servidor em 30 dias e limpa IndexedDB imediatamente; confirmação dupla para ações irreversíveis.
+**Rota Frontend:** `/privacy`
+
+**Descrição:** Painel completo de privacidade conforme LGPD, com transparência sobre dados coletados, inventário local, exportação, exclusão parcial do histórico e exclusão total da conta com confirmação em dois passos.
+
+**Seção — Dados que coletamos:**
+- 5 categorias documentadas (Conta, Conteúdo de Estudo, Dados FSRS, Gamificação, Mídia em Cache)
+- Cada categoria lista itens específicos, onde está armazenado (Local / Servidor) e base legal (LGPD)
+
+**Seção — Inventário local:**
+- Contagem atual de cada tabela Dexie: flashcards, cadernos, revisões, filtros, desafios, metas, cache de mídia, fila de sync
+- Carregado via `Promise.all` em `onMount`
+
+**Seção — Exportar meus dados (LGPD Art. 18, V — portabilidade):**
+- Coleta todas as tabelas (exceto mediaCache/syncQueue) em paralelo
+- Gera JSON com envelope `{ exportedAt, email, data: { ... } }`
+- Download como `cyanki_meus_dados_<timestamp>.json`
+- Spinner "Preparando arquivo..." com yield de 60ms
+
+**Seção — Excluir histórico de revisões:**
+- Confirmação em 1 passo: botão amber → painel de confirmação → executa
+- Apaga `db.reviewLogs.clear()` + `localStorage.removeItem('cyanki_gamification')`
+- Preserva flashcards e cadernos
+- Exibe contagem de registros a serem removidos
+- Banner de sucesso após conclusão
+
+**Seção — Excluir conta (LGPD Art. 18, VI — eliminação):**
+- Confirmação em 2 passos: botão red → formulário com campo de senha → executa
+- `DELETE /auth/delete-account` com `Authorization: Bearer <token>` e `{ password }`
+- Em caso de sucesso: `clearCyankiData()` + `localStorage.clear()` + `session.set({ token: null, email: null })` — tudo imediatamente
+- Mensagem: IndexedDB limpo imediatamente, dados do servidor removidos em até 30 dias
+- Estado pós-exclusão: tela de confirmação com botão "Ir para o login"
+- Tratamento de erro da API com mensagem inline
+
+**Seção — Seus direitos pela LGPD:**
+- Tabela de 7 artigos (Art. 18, I–VI, IX) com descrição e como cada direito é exercido no app
+- Contato do DPO: `privacy@cyanki.app`
+
+**Navegação:**
+- Link "Privacidade" adicionado na Sidebar (ícone de escudo) após Armazenamento
+- Card "Privacidade & Dados" adicionado na página de Perfil com link "Gerenciar →"
 
 ---
 
