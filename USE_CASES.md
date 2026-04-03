@@ -771,12 +771,41 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 ---
 
 #### UC-25 — Histórico de Estudo e Exportação de Dados
-**Status:** ⚠️ Parcialmente Implementado
+**Status:** ✅ Implementado
 
 **Ator:** Estudante  
-**Rota Frontend:** `/history`  
-**Implementado:** Visualização de histórico completo de revisões; contadores agregados (total, únicos, hoje); tabela detalhada com timestamp, grade, estado; exportação CSV  
-**Não Implementado:** Exportação PDF; filtro por período (Hoje/7 dias/30 dias/Sempre); filtro por disciplina; linha do tempo visual de atividades; processamento em background para volumes grandes
+**Rota Frontend:** `/history`
+
+**Descrição:** Página completa de histórico com gráficos, filtros, tabela paginada, exportação CSV e exportação PDF com relatório formatado.
+
+**Filtros (já implementados em UC-14, mantidos):**
+- Período: Hoje / 7 dias / 30 dias / Sempre
+- Disciplina/Tag: select populado a partir dos logs do período
+
+**KPIs:** Revisões totais, Cards únicos, Acerto (Good+Easy), Sequência de dias
+
+**Gráficos CSS:** Atividade diária (barras bicolores indigo) + Evolução da taxa de acerto
+
+**Distribuição FSRS:** 4 barras de progresso (Again/Hard/Good/Easy)
+
+**Tabela paginada:** 20 registros/página — Data, Flashcard front, Tags, Grade, Estado
+
+**Exportação CSV:** Todos os logs filtrados em UTF-8 com colunas Front e Tags
+
+**Exportação PDF (UC-25):**
+- Botão "PDF" (indigo) com spinner "Gerando..." enquanto processa
+- `isGeneratingPdf` flag: desabilita o botão e mostra spinner durante geração
+- Yield de 60ms com `await new Promise(r => setTimeout(r, 60))` antes do trabalho pesado — permite que o spinner renderize mesmo em documentos com milhares de linhas
+- Gera HTML completo com CSS inline (sem dependências npm)
+- Conteúdo do relatório:
+  - Cabeçalho: título, período, disciplina, data/hora de geração
+  - Resumo KPI: grid 4 colunas (Revisões, Cards únicos, Acerto com cor adaptativa, Sequência)
+  - Distribuição de avaliações: tabela com barra de progresso inline por grade
+  - Registro detalhado: tabela completa **sem paginação** (todos os logs filtrados)
+- Abre em nova aba via `window.open()` + `window.print()` no `onload`
+- Fallback: `alert()` se pop-up bloqueado pelo navegador
+- CSS `@media print` + `@page { margin: 1cm }` para impressão limpa
+- `thead { display: table-header-group }` — repete cabeçalho da tabela em cada página impressa
 
 ---
 

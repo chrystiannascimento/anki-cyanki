@@ -172,6 +172,144 @@
         URL.revokeObjectURL(url);
     }
 
+    // ─── PDF export (UC-25) ───────────────────────────────────────────────────
+    let isGeneratingPdf = false;
+
+    const GRADE_NAMES: Record<number, string> = { 1: 'Again', 2: 'Hard', 3: 'Good', 4: 'Easy' };
+    const STATE_NAMES: Record<number, string> = { 0: 'New', 1: 'Learning', 2: 'Review', 3: 'Relearning' };
+    const GRADE_COLORS: Record<number, string> = {
+        1: '#ef4444', 2: '#f59e0b', 3: '#10b981', 4: '#3b82f6'
+    };
+
+    async function downloadPDF() {
+        if (!filteredLogs.length || isGeneratingPdf) return;
+        isGeneratingPdf = true;
+
+        // Yield to the browser so the spinner renders before heavy work
+        await new Promise(r => setTimeout(r, 60));
+
+        try {
+            const periodLabel: Record<string, string> = { '1': 'Hoje', '7': 'Últimos 7 dias', '30': 'Últimos 30 dias', 'all': 'Todo o período' };
+            const now = new Date().toLocaleString('pt-BR');
+            const tagLabel = selectedTag === 'all' ? 'Todas as disciplinas' : selectedTag;
+
+            // Build grade distribution rows
+            const gradeRows = [
+                { label: 'Again', count: gradeCounts.again, color: '#ef4444' },
+                { label: 'Hard',  count: gradeCounts.hard,  color: '#f59e0b' },
+                { label: 'Good',  count: gradeCounts.good,  color: '#10b981' },
+                { label: 'Easy',  count: gradeCounts.easy,  color: '#3b82f6' },
+            ].map(g => {
+                const pct = gradeTotal ? Math.round((g.count / gradeTotal) * 100) : 0;
+                return `<tr>
+                    <td style="padding:6px 12px;font-weight:600;color:${g.color}">${g.label}</td>
+                    <td style="padding:6px 12px">${g.count}</td>
+                    <td style="padding:6px 12px">
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <div style="flex:1;height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden">
+                                <div style="height:100%;width:${pct}%;background:${g.color};border-radius:4px"></div>
+                            </div>
+                            <span style="min-width:36px;font-size:12px">${pct}%</span>
+                        </div>
+                    </td>
+                </tr>`;
+            }).join('');
+
+            // Build log table rows (all logs, no pagination in PDF)
+            const logRows = filteredLogs.map(log => {
+                const card = cardMap.get(log.flashcardId);
+                const front = card ? card.front.replace(/</g, '&lt;').replace(/>/g, '&gt;') : `<code style="font-size:11px;color:#9ca3af">${log.flashcardId.substring(0, 10)}…</code>`;
+                const tags = card?.tags?.filter(Boolean).join(', ') || '—';
+                const gradeColor = GRADE_COLORS[log.grade] ?? '#6b7280';
+                const gradeLabel = GRADE_NAMES[log.grade] ?? log.grade;
+                const stateLabel = STATE_NAMES[log.state] ?? log.state;
+                const dateStr = new Date(log.reviewedAt).toLocaleString('pt-BR', {
+                    day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+                });
+                return `<tr>
+                    <td style="padding:6px 10px;white-space:nowrap;color:#6b7280;font-size:12px">${dateStr}</td>
+                    <td style="padding:6px 10px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${front}</td>
+                    <td style="padding:6px 10px;font-size:12px;color:#6b7280">${tags}</td>
+                    <td style="padding:6px 10px;text-align:center">
+                        <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:${gradeColor}22;color:${gradeColor}">${gradeLabel}</span>
+                    </td>
+                    <td style="padding:6px 10px;text-align:center;font-size:12px;color:#6b7280">${stateLabel}</td>
+                </tr>`;
+            }).join('');
+
+            const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<title>Cyanki — Histórico de Estudo</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; color: #111827; background: #fff; padding: 32px; }
+  h1 { font-size: 22px; font-weight: 900; color: #4f46e5; letter-spacing: -0.5px; }
+  h2 { font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: #9ca3af; margin: 24px 0 10px; }
+  .meta { font-size: 12px; color: #6b7280; margin-top: 4px; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0; }
+  .kpi { border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px; text-align: center; }
+  .kpi-val { font-size: 26px; font-weight: 900; color: #4f46e5; }
+  .kpi-lbl { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #9ca3af; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead th { background: #f9fafb; padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #e5e7eb; }
+  tbody tr { border-bottom: 1px solid #f3f4f6; }
+  tbody tr:hover { background: #f9fafb; }
+  .section { border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
+  footer { margin-top: 32px; font-size: 11px; color: #d1d5db; text-align: center; }
+  @media print {
+    body { padding: 16px; }
+    @page { margin: 1cm; }
+    thead { display: table-header-group; }
+  }
+</style>
+</head>
+<body>
+<h1>Cyanki — Histórico de Estudo</h1>
+<p class="meta">Período: <strong>${periodLabel[selectedPeriod]}</strong> · Disciplina: <strong>${tagLabel}</strong> · Gerado em ${now}</p>
+
+<h2>Resumo</h2>
+<div class="kpis">
+  <div class="kpi"><div class="kpi-val">${totalReviews}</div><div class="kpi-lbl">Revisões</div></div>
+  <div class="kpi"><div class="kpi-val">${uniqueCards}</div><div class="kpi-lbl">Cards únicos</div></div>
+  <div class="kpi"><div class="kpi-val" style="color:${accuracy>=70?'#10b981':accuracy>=50?'#f59e0b':'#ef4444'}">${accuracy}%</div><div class="kpi-lbl">Acerto (Good+Easy)</div></div>
+  <div class="kpi"><div class="kpi-val" style="color:#f97316">🔥 ${streak}</div><div class="kpi-lbl">Sequência (dias)</div></div>
+</div>
+
+<h2>Distribuição de Avaliações</h2>
+<div class="section">
+<table>
+  <thead><tr><th>Avaliação</th><th>Quantidade</th><th style="width:200px">Proporção</th></tr></thead>
+  <tbody>${gradeRows}</tbody>
+</table>
+</div>
+
+<h2>Registro Detalhado (${filteredLogs.length} entradas)</h2>
+<div class="section">
+<table>
+  <thead><tr><th>Data / Hora</th><th>Flashcard</th><th>Disciplina</th><th style="text-align:center">Avaliação</th><th style="text-align:center">Estado</th></tr></thead>
+  <tbody>${logRows}</tbody>
+</table>
+</div>
+
+<footer>Exportado pelo Cyanki — Plataforma de Estudos Adaptativa</footer>
+<script>window.onload=function(){window.print();}<\/script>
+</body>
+</html>`;
+
+            const win = window.open('', '_blank');
+            if (!win) {
+                alert('Permita pop-ups para exportar o PDF.');
+                return;
+            }
+            win.document.write(html);
+            win.document.close();
+        } finally {
+            isGeneratingPdf = false;
+        }
+    }
+
     // ─── Helpers ──────────────────────────────────────────────────────────────
     const GRADE_LABELS: Record<number, { label: string; classes: string }> = {
         1: { label: 'Again', classes: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' },
@@ -195,10 +333,32 @@
             <h1 class="text-3xl font-extrabold tracking-tight text-neutral-900 dark:text-white">Histórico de Estudo</h1>
             <p class="text-neutral-500 dark:text-neutral-400 mt-1">Evolução e desempenho das suas revisões FSRS.</p>
         </div>
-        <button on:click={downloadCSV} disabled={!filteredLogs.length} class="inline-flex items-center gap-2 px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 dark:bg-neutral-700 dark:hover:bg-neutral-600 text-white font-bold rounded-xl text-sm transition disabled:opacity-50 disabled:cursor-not-allowed shrink-0">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-            Exportar CSV
-        </button>
+        <div class="flex gap-2 shrink-0">
+            <button on:click={downloadCSV} disabled={!filteredLogs.length} class="inline-flex items-center gap-2 px-4 py-2.5 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-700 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-200 font-bold rounded-xl text-sm transition disabled:opacity-50 disabled:cursor-not-allowed border border-neutral-200 dark:border-neutral-600">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                CSV
+            </button>
+            <!-- UC-25: PDF export -->
+            <button
+                on:click={downloadPDF}
+                disabled={!filteredLogs.length || isGeneratingPdf}
+                class="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-indigo-500/20"
+                title="Exportar relatório em PDF (abre diálogo de impressão)"
+            >
+                {#if isGeneratingPdf}
+                    <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                    Gerando...
+                {:else}
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                    </svg>
+                    PDF
+                {/if}
+            </button>
+        </div>
     </div>
 
     <!-- ── Filters ─────────────────────────────────────────────────────────── -->
