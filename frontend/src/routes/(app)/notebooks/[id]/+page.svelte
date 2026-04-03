@@ -288,6 +288,65 @@
 		: parseMode === 'incremental'
 		? '🔄 Incremental'
 		: '📋 Sync';
+
+	// ─── UC-17: Virtual scroll ─────────────────────────────────────────────────
+	/**
+	 * Estimated height (px) per flashcard item including bottom margin.
+	 * Cards with long answers/many tags will be taller; we use a generous
+	 * estimate and absorb the drift with a large overscan buffer.
+	 */
+	const ESTIMATED_CARD_HEIGHT = 156;
+
+	/** Number of extra cards to render above and below the visible viewport. */
+	const BASE_OVERSCAN = 5;
+
+	/** Only activate virtual rendering above this threshold — below it, render all. */
+	const VIRTUAL_THRESHOLD = 20;
+
+	let flashcardsContainerHeight = 600;
+	let flashcardsScrollTop = 0;
+
+	/**
+	 * Svelte action: attaches a ResizeObserver so we always know the container's
+	 * rendered height without reading the DOM on every scroll event.
+	 */
+	function useVirtualContainer(node: HTMLElement) {
+		flashcardsContainerHeight = node.clientHeight;
+		const ro = new ResizeObserver(() => {
+			flashcardsContainerHeight = node.clientHeight;
+		});
+		ro.observe(node);
+		return { destroy() { ro.disconnect(); } };
+	}
+
+	function onFlashcardsScroll(e: Event) {
+		flashcardsScrollTop = (e.currentTarget as HTMLElement).scrollTop;
+	}
+
+	// Reduce overscan on low-memory devices (navigator.deviceMemory is 0.25–8 on Chrome)
+	$: effectiveOverscan = (() => {
+		const mem = (navigator as any).deviceMemory as number | undefined;
+		if (mem !== undefined && mem <= 1) return 2;
+		if (mem !== undefined && mem <= 2) return 3;
+		return BASE_OVERSCAN;
+	})();
+
+	$: useVirtual = sessionFlashcards.length > VIRTUAL_THRESHOLD;
+
+	$: virtualStart = useVirtual
+		? Math.max(0, Math.floor(flashcardsScrollTop / ESTIMATED_CARD_HEIGHT) - effectiveOverscan)
+		: 0;
+
+	$: virtualEnd = useVirtual
+		? Math.min(
+				sessionFlashcards.length,
+				Math.ceil((flashcardsScrollTop + flashcardsContainerHeight) / ESTIMATED_CARD_HEIGHT) + effectiveOverscan
+			)
+		: sessionFlashcards.length;
+
+	$: visibleCards = sessionFlashcards.slice(virtualStart, virtualEnd);
+	$: topSpacerHeight = virtualStart * ESTIMATED_CARD_HEIGHT;
+	$: bottomSpacerHeight = Math.max(0, (sessionFlashcards.length - virtualEnd) * ESTIMATED_CARD_HEIGHT);
 </script>
 
 {#if notebook}
@@ -365,37 +424,73 @@
 				</div>
 			</div>
 
-			<div class="flex-1 overflow-y-auto p-8">
-				{#if viewMode === 'markdown'}
+			{#if viewMode === 'markdown'}
+				<div class="flex-1 overflow-y-auto p-8">
 					<div class="prose dark:prose-invert prose-indigo max-w-none">
 						{@html renderedContent}
 					</div>
-				{:else}
-					<div class="max-w-3xl mx-auto space-y-4">
-						{#each sessionFlashcards as card (card.id)}
-							<div class="bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl p-5 shadow-sm">
-								<h3 class="font-bold text-neutral-800 dark:text-neutral-200 mb-2">{card.front}</h3>
-								<p class="text-neutral-600 dark:text-neutral-400 text-sm whitespace-pre-wrap">{card.back}</p>
-								{#if card.tags && card.tags.length > 0}
-									<div class="mt-4 flex flex-wrap gap-2">
-										{#each card.tags as tag}
-											<span class="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs rounded-lg font-medium tracking-wide">#{tag}</span>
-										{/each}
-									</div>
-								{/if}
-							</div>
-						{/each}
-						{#if sessionFlashcards.length === 0}
-							<div class="text-center text-neutral-400 py-12 flex flex-col items-center gap-3">
-								<svg class="w-12 h-12 text-neutral-300 dark:text-neutral-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-								</svg>
-								<p class="text-sm">Nenhum flashcard gerado. Escreva <code class="bg-neutral-100 dark:bg-neutral-800 px-1 rounded text-xs">Q: Pergunta</code> e <code class="bg-neutral-100 dark:bg-neutral-800 px-1 rounded text-xs">A: Resposta</code>.</p>
-							</div>
+				</div>
+			{:else}
+				<!--
+					UC-17 — Virtual scroll: only the cards in the visible viewport
+					(+ overscan buffer) are in the DOM. Top/bottom spacers preserve
+					the correct total scroll height so the scrollbar behaves naturally.
+				-->
+				<div
+					class="flex-1 overflow-y-auto"
+					use:useVirtualContainer
+					on:scroll={onFlashcardsScroll}
+				>
+					{#if sessionFlashcards.length === 0}
+						<div class="text-center text-neutral-400 py-12 flex flex-col items-center gap-3 px-8">
+							<svg class="w-12 h-12 text-neutral-300 dark:text-neutral-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+							</svg>
+							<p class="text-sm">Nenhum flashcard gerado. Escreva <code class="bg-neutral-100 dark:bg-neutral-800 px-1 rounded text-xs">Q: Pergunta</code> e <code class="bg-neutral-100 dark:bg-neutral-800 px-1 rounded text-xs">A: Resposta</code>.</p>
+						</div>
+					{:else}
+						<!-- Virtual spacer: represents cards above the rendered window -->
+						{#if topSpacerHeight > 0}
+							<div style="height: {topSpacerHeight}px" aria-hidden="true"></div>
 						{/if}
-					</div>
-				{/if}
-			</div>
+
+						<div class="max-w-3xl mx-auto px-8 py-4">
+							{#each visibleCards as card (card.id)}
+								<div class="bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl p-5 shadow-sm mb-4">
+									<div class="flex items-start justify-between gap-2 mb-2">
+										<h3 class="font-bold text-neutral-800 dark:text-neutral-200">{card.front}</h3>
+										{#if useVirtual}
+											<span class="shrink-0 text-[10px] text-neutral-300 dark:text-neutral-700 tabular-nums" title="Índice do card">
+												#{virtualStart + visibleCards.indexOf(card) + 1}
+											</span>
+										{/if}
+									</div>
+									<p class="text-neutral-600 dark:text-neutral-400 text-sm whitespace-pre-wrap">{card.back}</p>
+									{#if card.tags && card.tags.length > 0}
+										<div class="mt-4 flex flex-wrap gap-2">
+											{#each card.tags as tag}
+												<span class="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs rounded-lg font-medium tracking-wide">#{tag}</span>
+											{/each}
+										</div>
+									{/if}
+								</div>
+							{/each}
+						</div>
+
+						<!-- Virtual spacer: represents cards below the rendered window -->
+						{#if bottomSpacerHeight > 0}
+							<div style="height: {bottomSpacerHeight}px" aria-hidden="true"></div>
+						{/if}
+
+						<!-- Rendered count indicator (only shown when virtual mode is active) -->
+						{#if useVirtual}
+							<p class="text-center text-[11px] text-neutral-300 dark:text-neutral-700 pb-4 tabular-nums">
+								Renderizando {visibleCards.length} de {sessionFlashcards.length} cards
+							</p>
+						{/if}
+					{/if}
+				</div>
+			{/if}
 		</div>
 	</div>
 </div>

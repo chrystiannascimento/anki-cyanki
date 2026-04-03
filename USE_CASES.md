@@ -529,12 +529,28 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 ---
 
 #### UC-17 — Preview em Tempo Real com Renderização Virtualizada
-**Status:** ⚠️ Parcialmente Implementado
+**Status:** ✅ Implementado
 
 **Ator:** Estudante  
-**Rota Frontend:** `/notebooks/[id]`  
-**Implementado:** Preview de Markdown com debounce; renderização dos cards parseados; sanitização com DOMPurify  
-**Não Implementado:** Virtual scroll (renderização apenas dos 10-15 cards visíveis na viewport); adaptação dinâmica para dispositivos com pouca RAM
+**Rota Frontend:** `/notebooks/[id]`
+
+**Descrição:** O painel de Flashcards no editor de cadernos usa virtual scroll para renderizar apenas os cards visíveis na viewport, mantendo o DOM leve independente do tamanho do caderno.
+
+**Virtual scroll (painel Flashcards):**
+- `VIRTUAL_THRESHOLD = 20` — abaixo deste limite de cards, todos são renderizados diretamente (sem overhead)
+- Acima do threshold: `virtualStart` e `virtualEnd` calculados a partir de `flashcardsScrollTop` e `flashcardsContainerHeight`
+- `ESTIMATED_CARD_HEIGHT = 156px` — estimativa por card incluindo margem; absorve variação com overscan generoso
+- Spacer `<div style="height: Xpx">` no topo e na base mantém a altura total correta e o comportamento nativo da scrollbar
+- Svelte action `useVirtualContainer` anexa `ResizeObserver` para atualizar `flashcardsContainerHeight` dinamicamente
+- Handler `onFlashcardsScroll` atualiza `flashcardsScrollTop` a cada evento de scroll
+
+**Adaptação dinâmica para baixa RAM (UC-17):**
+- `effectiveOverscan` reduzido via `navigator.deviceMemory`: ≤1 GB → overscan 2; ≤2 GB → overscan 3; demais → overscan 5
+- Garante que dispositivos com pouca RAM renderizem o mínimo necessário
+
+**Indicadores visuais:**
+- Número de índice `#N` no canto superior direito de cada card (visível apenas em modo virtual)
+- Rodapé "Renderizando X de Y cards" exibido apenas quando virtual mode está ativo
 
 ---
 
