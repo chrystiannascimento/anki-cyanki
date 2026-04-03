@@ -479,12 +479,52 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 ---
 
 #### UC-16 — Edição de Alto Desempenho com Parsing Incremental em Background
-**Status:** ⚠️ Parcialmente Implementado
+**Status:** ✅ Implementado
 
 **Ator:** Estudante  
 **Rota Frontend:** `/notebooks/[id]`  
-**Implementado:** Editor de caderno com auto-save (debounce 1s); parser de Markdown para Q:/A: com injeção de NanoID; atualização reativa dos flashcards no Dexie  
-**Não Implementado:** Web Worker para offloading do parsing; parsing incremental por bloco (somente o bloco afetado); fallback para parsing síncrono em lotes pequenos quando Web Worker indisponível
+**Módulos:** `frontend/src/lib/workers/notebookParser.worker.ts`, `frontend/src/lib/notebookParserIncremental.ts`
+
+**Descrição:** O editor de cadernos agora usa uma estratégia de três vias para parsing de Markdown, selecionada automaticamente com base no tamanho do documento:
+
+**Estratégia 1 — Parsing Incremental (main thread, cadernos pequenos < 40 blocos):**
+- `splitIntoBlocks(markdown)` divide o conteúdo em segmentos pelo marcador `^Q:` de linha
+- `parseIncremental()` compara o array de blocos atual com o anterior via `Map<blockText, result>` (cache por conteúdo exato)
+- Apenas blocos cujo texto mudou são re-parseados; blocos inalterados retornam resultado cacheado instantaneamente
+- Cache eviction automática: entradas que saem do documento são removidas para limitar uso de memória
+- Custo por tecla: **O(blocos_modificados)** em vez de O(N)
+
+**Estratégia 2 — Web Worker (cadernos grandes ≥ 40 blocos, Worker disponível):**
+- Worker instanciado em `onMount` com fallback gracioso em contextos que bloqueiam Workers
+- `dispatchToWorker(markdown)` envia `{ reqId, markdown, cardDictionary }` ao Worker
+- Worker executa o mesmo regex de parsing + nanoid off the main thread, retorna `{ reqId, updatedMarkdown, extractedCards, hasNewInjections }`
+- Respostas stale (reqId antigo) são descartadas automaticamente para evitar race conditions
+- Erro no Worker → `onerror` handler degrada para sync parse e resolve o Promise pendente
+
+**Estratégia 3 — Sync Fallback (Worker indisponível):**
+- Chama `parseAndInjectNotebookFlashcards()` original na main thread
+- Garante compatibilidade total independente de contexto de segurança ou browser
+
+**Operações de DB (sempre na main thread):**
+- `persistCards()` recebe o array `extractedCards` independente da estratégia usada
+- Cria cards novos ou atualiza cards alterados no Dexie e enfileira no syncEngine
+- `cardDictionary` (Map<normalizedFront, cardId>) é atualizado após cada persist para que futuras passes incrementais conheçam IDs já existentes
+
+**Indicador de desempenho (header):**
+- Badge `⚡ Worker` / `🔄 Incremental` / `📋 Sync` mostra o modo ativo
+- Exibe tempo do último parse em ms (ex: `12ms`)
+- Tooltip: blocos processados vs blocos do cache
+
+**`notebookParser.worker.ts`:**
+- Importa `nanoid` diretamente no Worker (module worker via Vite `{ type: 'module' }`)
+- Lógica de parsing idêntica ao parser principal, sem acesso a IndexedDB
+- Interface: `ParseRequest { reqId, markdown, cardDictionary: [string,string][] }` → `ParseResponse { reqId, updatedMarkdown, extractedCards, hasNewInjections }`
+
+**`notebookParserIncremental.ts`:**
+- `splitIntoBlocks(markdown)` — split por `(?=^Q:\s)m`
+- `parseBlock(block, cardDictionary)` — regex single-block, retorna `BlockParseResult`
+- `parseIncremental(markdown, previousBlocks, blockCache, cardDictionary)` — coordena cache e merge
+- `WORKER_THRESHOLD_BLOCKS = 40` — constante exportada para consistência
 
 ---
 
