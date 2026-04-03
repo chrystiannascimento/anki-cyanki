@@ -139,7 +139,7 @@
                 <div>
                     <label class="block text-sm font-semibold mb-1.5 text-neutral-700 dark:text-neutral-300 flex justify-between">
                         Password
-                        <a href="#" class="text-indigo-600 dark:text-indigo-400 font-medium hover:underline">Forgot?</a>
+                        <a href="/forgot-password" class="text-indigo-600 dark:text-indigo-400 font-medium hover:underline">Esqueci minha senha</a>
                     </label>
                     <input bind:value={password} type="password" required placeholder="••••••••" class="w-full p-3.5 rounded-xl bg-white dark:bg-neutral-800 border items-center border-neutral-200 dark:border-neutral-700 focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20 transition-all outline-none placeholder:text-neutral-400 dark:text-white dark:placeholder-neutral-500" />
                 </div>

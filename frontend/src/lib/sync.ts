@@ -1,6 +1,7 @@
 import { db } from './db';
 import { PUBLIC_API_URL } from '$env/static/public';
 import { writable } from 'svelte/store';
+import { markSessionExpired } from './authStore';
 
 export const isSyncingStore = writable(false);
 
@@ -46,6 +47,8 @@ export class SyncEngine {
                     const idsToDelete = pending.map(p => p.id!);
                     await db.syncQueue.bulkDelete(idsToDelete);
                 } else {
+                    // UC-24: 401 means token expired — surface to user without logging out
+                    if (response.status === 401) markSessionExpired();
                     break; // Abort push loop on server errors to prevent cyclic spam
                 }
             }
@@ -71,6 +74,8 @@ export class SyncEngine {
                     'Authorization': `Bearer ${token}`
                 }
             });
+
+            if (response.status === 401) { markSessionExpired(); return; }
 
             if (response.ok) {
                 const data = await response.json();

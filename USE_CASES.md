@@ -723,13 +723,50 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 ---
 
 #### UC-24 — Autenticação e Recuperação de Acesso
-**Status:** ⚠️ Parcialmente Implementado
+**Status:** ✅ Implementado
 
 **Ator:** Usuário  
-**Rotas Frontend:** `/login`, `/register`  
-**Endpoints:** `POST /auth/register`, `POST /auth/login`  
-**Implementado:** Autenticação email/senha com JWT (15 min de expiração); bcrypt com limite 72 bytes; acesso a conteúdo local com sessão em cache  
-**Não Implementado:** Login social (Google, Apple); recuperação de senha via email (link temporário); modo somente leitura offline para sessão expirada; refresh token (token JWT sem renovação automática)
+**Rotas Frontend:** `/login`, `/register`, `/forgot-password`, `/reset-password`  
+**Endpoints:** `POST /auth/register`, `POST /auth/login`, `POST /auth/forgot-password`, `POST /auth/reset-password`, `POST /auth/change-password`
+
+**Recuperação de senha via e-mail:**
+
+`/forgot-password`:
+- Input de e-mail + `POST /auth/forgot-password { email }`
+- Estado de sucesso: "Verifique seu e-mail" com nota que o link expira em 30 min
+- Estado de erro com mensagem da API
+- Link "← Voltar ao login"
+
+`/reset-password?token=xxx`:
+- Lê `token` dos searchParams do URL
+- Se token ausente → tela "Link inválido" com botão para solicitar novo
+- Formulário: nova senha + confirmação + medidor de força (4 níveis) + validação inline
+- `POST /auth/reset-password { token, new_password }`
+- Sucesso → tela de confirmação + botão "Ir para o login"
+
+**Modo offline / sessão expirada:**
+
+`authStore.ts`:
+- `sessionExpired` writable — sinaliza token expirado detectado pelo sync engine
+- `markSessionExpired()` — chamada pelo sync engine ao receber 401
+- Login novo chama `sessionExpired.set(false)` automaticamente
+
+`sync.ts`:
+- Detecta `response.status === 401` no push e no pull
+- Chama `markSessionExpired()` sem fazer logout — dados locais permanecem acessíveis
+
+`+layout.svelte` (banners globais):
+- **Banner offline** (âmbar, topo da tela): aparece quando `!navigator.onLine` — "Modo offline — dados locais disponíveis, sincronização desativada"
+- **Banner sessão expirada** (rose, topo da tela): aparece quando `$sessionExpired && $session.token` — "Sessão expirada — dados locais disponíveis, mas a sincronização está pausada." + link "Fazer login novamente"
+- `onMount` / `onDestroy` registram e limpam listeners `online` / `offline`
+
+**Rotas públicas atualizadas:**
+- `PUBLIC_ROUTES = ['/login', '/register', '/forgot-password', '/reset-password']`
+- Guard de redirecionamento respeita a lista completa
+
+**Não implementado (fora de escopo):**
+- Login social (Google, Apple) — requer configuração OAuth no backend
+- Refresh token automático — requer endpoint `/auth/refresh` no backend
 
 ---
 

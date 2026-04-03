@@ -1,17 +1,28 @@
 <script lang="ts">
     import '../app.css';
-    import { onMount } from 'svelte';
+    import { onMount, onDestroy } from 'svelte';
     import { page } from '$app/stores';
     import { goto } from '$app/navigation';
-    import { session } from '$lib/authStore';
+    import { session, sessionExpired } from '$lib/authStore';
     import { syncEngine, isSyncingStore } from '$lib/sync';
     import { themeStore, toggleTheme } from '$lib/theme';
 
     let mounted = false;
+    let isOnline = true;
+
+    // UC-24: public routes that don't require authentication
+    const PUBLIC_ROUTES = ['/login', '/register', '/forgot-password', '/reset-password'];
+
+    function updateOnlineStatus() {
+        isOnline = navigator.onLine;
+    }
 
     onMount(() => {
         mounted = true;
-        
+        isOnline = navigator.onLine;
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+
         // Hydrate Theme State securely
         const storedTheme = localStorage.getItem('theme');
         if (storedTheme === 'dark' || (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -28,15 +39,22 @@
         }
     });
 
+    onDestroy(() => {
+        if (typeof window !== 'undefined') {
+            window.removeEventListener('online', updateOnlineStatus);
+            window.removeEventListener('offline', updateOnlineStatus);
+        }
+    });
+
     $: if (mounted) {
         const currentRoute = $page.url.pathname;
-        const isPublicRoute = ['/login', '/register'].includes(currentRoute);
+        const isPublicRoute = PUBLIC_ROUTES.some(r => currentRoute.startsWith(r));
         const hasToken = !!$session.token;
 
         if (!hasToken && !isPublicRoute && currentRoute !== '/') {
             // If not logged in and trying to access a protected route, go to login
             goto('/login');
-        } else if (hasToken && isPublicRoute) {
+        } else if (hasToken && (currentRoute === '/login' || currentRoute === '/register')) {
             // If logged in and on login/register, go to dashboard
             goto('/dashboard');
         }
@@ -44,6 +62,27 @@
 </script>
 
 <slot />
+
+<!-- UC-24: Offline banner -->
+{#if mounted && !isOnline}
+    <div class="fixed top-0 inset-x-0 z-[100] flex items-center justify-center gap-2 bg-amber-500 text-white text-xs font-semibold px-4 py-2 shadow-lg pointer-events-none">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728M15.536 8.464a5 5 0 010 7.072M12 12h.01M8.464 15.536a5 5 0 010-7.072M5.636 18.364a9 9 0 010-12.728"/>
+        </svg>
+        Modo offline — dados locais disponíveis, sincronização desativada
+    </div>
+{/if}
+
+<!-- UC-24: Session expired banner -->
+{#if mounted && $sessionExpired && $session.token}
+    <div class="fixed top-0 inset-x-0 z-[100] flex items-center justify-center gap-3 bg-rose-600 text-white text-xs font-semibold px-4 py-2 shadow-lg">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+        </svg>
+        Sessão expirada — dados locais disponíveis, mas a sincronização está pausada.
+        <a href="/login" class="underline underline-offset-2 hover:text-rose-200 transition-colors">Fazer login novamente</a>
+    </div>
+{/if}
 
 <!-- Global Theme Toggle -->
 <button 
