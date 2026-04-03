@@ -396,12 +396,46 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 ---
 
 #### UC-14 — Dashboard de Desempenho e Gráficos de Performance
-**Status:** ⚠️ Parcialmente Implementado
+**Status:** ✅ Implementado
 
 **Ator:** Estudante  
-**Rota Frontend:** `/history`  
-**Implementado:** Contadores de total de revisões, cards únicos estudados, revisões hoje; tabela detalhada de review log com timestamps, grades e estados; exportação CSV  
-**Não Implementado:** Gráficos interativos de evolução temporal; filtro por período (Hoje/7 dias/30 dias/Sempre) com query otimizada; filtro por disciplina no dashboard; visualização de evolução de desempenho
+**Rota Frontend:** `/history` 
+
+**Descrição:** Dashboard completo de desempenho com filtros por período e disciplina, 4 gráficos CSS interativos e tabela paginada de revisões com informações enriquecidas por flashcard.
+
+**Filtros:**
+- **Período:** Hoje / 7 dias / 30 dias / Sempre — pills reativas sem recarregar a página
+- **Disciplina:** select dinâmico populado com tags presentes nos logs do período selecionado; zera seleção se tag sair do período
+
+**KPIs (4 cards):**
+- Total de revisões no período/filtro
+- Cards únicos revisados
+- Taxa de acerto % (Good+Easy / total) com cor adaptativa (verde ≥70%, âmbar ≥50%, rosa <50%)
+- Sequência atual de dias consecutivos com revisão 🔥
+
+**Gráfico de Atividade Diária (barras CSS):**
+- Barra bicolor por dia: azul escuro = Good/Easy, azul claro = Again/Hard
+- Tooltip hover com: data, total de revisões, acertos
+- Labels X espaçadas dinamicamente para evitar sobreposição
+- Legenda de cores abaixo
+
+**Gráfico de Evolução de Acerto (barras CSS):**
+- Uma barra por dia no período selecionado com % de acerto
+- Cor adaptativa: verde ≥70%, âmbar ≥50%, rosa <50%
+- Dias sem revisão exibidos como barra mínima acinzentada
+- Tooltip hover com % exata do dia
+
+**Distribuição de Avaliações FSRS:**
+- Barras de progresso para Again / Hard / Good / Easy com contagem e percentual
+
+**Tabela Detalhada (paginada, 20 por página):**
+- Colunas: Data/Hora, Flashcard (front truncado), Disciplina (tags do card), Avaliação (badge colorido), Estado FSRS
+- Cards resolvidos mostram o `front` do flashcard (join com `cardMap`); cards deletados mostram ID truncado
+- Paginação com controles Anterior/Próxima
+
+**Exportação CSV enriquecida:**
+- Inclui colunas: Log ID, Flashcard ID, Front (escapado), Tags, Grade, State, Reviewed At ISO
+- Filtrada pelo período/disciplina ativos no momento do clique
 
 ---
 
