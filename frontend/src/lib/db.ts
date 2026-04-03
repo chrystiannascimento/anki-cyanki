@@ -66,6 +66,17 @@ export interface MediaCacheEntry {
     flashcardId?: string; // Optional association for pruning by card
 }
 
+// UC-13: Study goals — daily/weekly targets for volume, XP, or focus time
+export interface StudyGoal {
+    id: string;                          // NanoID primary key
+    type: 'volume' | 'xp' | 'time';     // cards reviewed | XP earned | minutes focused
+    label: string;                       // User-defined display name
+    target: number;                      // Unit depends on type: cards | XP | minutes
+    period: 'daily' | 'weekly';          // Resets at midnight or Monday
+    notifyOnComplete: boolean;           // Show browser notification when goal is hit
+    createdAt: number;
+}
+
 // UC-12: Community challenges — offline-first, shareable via 6-char code
 export interface Challenge {
     id: string;                       // NanoID primary key
@@ -98,6 +109,7 @@ export class CyankiDB extends Dexie {
     savedFilters!: Table<SavedFilter, string>;
     mediaCache!: Table<MediaCacheEntry, string>;
     challenges!: Table<Challenge, string>;
+    studyGoals!: Table<StudyGoal, string>;
 
     constructor() {
         super('cyanki_db');
@@ -128,6 +140,11 @@ export class CyankiDB extends Dexie {
         this.version(7).stores({
             challenges: 'id, code, createdAt, isPublic, synced'
         });
+
+        // v8: add studyGoals table for study goals and focus timer (UC-13)
+        this.version(8).stores({
+            studyGoals: 'id, type, period, createdAt'
+        });
     }
 }
 
@@ -142,6 +159,7 @@ export async function clearCyankiData() {
         db.leaderboard.clear(),
         db.savedFilters.clear(),
         db.mediaCache.clear(),
-        db.challenges.clear()
+        db.challenges.clear(),
+        db.studyGoals.clear()
     ]);
 }

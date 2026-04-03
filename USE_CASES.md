@@ -347,10 +347,47 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 ---
 
 #### UC-13 — Criação de Metas de Estudo e Lembretes Inteligentes
-**Status:** ❌ Não Implementado
+**Status:** ✅ Implementado
 
 **Ator:** Estudante  
-**Previsto:** Metas por horas líquidas (com pausas automáticas por inatividade), volume de questões ou taxa de desempenho. Timer automático com pausa após 2 min de inatividade. Service Worker para notificações push agendadas (funciona com browser fechado).
+**Rotas Frontend:** `/goals`, `/goals/timer`  
+**Módulos:** `frontend/src/lib/stores/studyTimer.ts`, `frontend/src/lib/db.ts` (tabela `studyGoals` v8)
+
+**Descrição:** O usuário define metas de estudo por tipo (volume de cards, XP acumulado ou minutos de foco), período (diária/semanal) e recebe notificações locais via API `Notification` quando as metas são atingidas. O timer de foco detecta inatividade (mouse/teclado) e pausa automaticamente após 2 minutos.
+
+**Tipos de Meta (`/goals`):**
+- **Volume**: número de cards revisados via FSRS no período (calcula de `reviewLogs`)
+- **XP**: XP acumulado no período (proxy: cards × 10 XP)
+- **Tempo**: minutos de foco registrados pelo `studyTimer` (reinicia diariamente)
+- Período: Diária (reinicia meia-noite) ou Semanal (reinicia segunda-feira)
+- Presets rápidos por tipo (10/20/50/100 cards, 100/200/500/1000 XP, 25/45/60/120 min)
+- Notificação local configurável por meta (`notifyOnComplete`)
+- Progresso em tempo real com barra colorida (rose < 40% → amber < 70% → indigo < 100% → emerald)
+- Reactive check: dispara `notify()` automaticamente quando meta é batida durante a sessão
+
+**Timer de Foco (`/goals/timer`):**
+- Dois modos: **Cronômetro** (tempo livre) e **Contagem Regressiva** (15/25/45/60/90 min)
+- Anel SVG animado (`stroke-dashoffset`) com estado visual (indigo = rodando, cinza = pausado)
+- **Auto-pausa por inatividade:** monitor via `mousemove`, `keydown`, `touchstart` e `visibilitychange`; inativo por 2 min → `pauseTimer()` + notificação local
+- **Retomada automática:** ao detectar atividade após auto-pausa, resume o timer
+- Pausa ao navegar para outra página (`onDestroy`)
+- Resumo diário: minutos focados hoje + tempo total formatado (Xh Ym ou Xm Ys)
+- Metas de tempo do usuário exibidas abaixo com barra de progresso reativa
+
+**Store `studyTimer.ts`:**
+- `TimerState`: `{ isRunning, segmentSeconds, totalSecondsToday, todayKey }`
+- Rollover automático de dia: detecta mudança de `YYYY-MM-DD` no tick
+- Persistência em `localStorage` (`cyanki_study_timer`); sempre reinicia pausado
+- `startTimer()` / `pauseTimer()` / `resetTimer()` / `getTotalMinutesToday()`
+- `minutesToday` — derived store reativo com minutos acumulados
+- `requestNotificationPermission()` — solicita permissão `Notification` (idempotente)
+- `notify(title, body)` — dispara `new Notification()` se permissão concedida
+
+**Notificações:**
+- Banner na página `/goals` pede permissão se `Notification.permission === 'default'`
+- Notificações locais (browser aberto); push via Service Worker com browser fechado requer backend de push (fora do escopo atual)
+
+**Sidebar:** Link "Metas" com ícone de gráfico de barras adicionado entre "Mestria" e "Mini-Games"
 
 ---
 
