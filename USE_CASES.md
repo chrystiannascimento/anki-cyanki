@@ -679,12 +679,46 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 ---
 
 #### UC-23 — Gerenciamento de Perfil e Preferências
-**Status:** ⚠️ Parcialmente Implementado
+**Status:** ✅ Implementado
 
 **Ator:** Estudante  
-**Rota Frontend:** `/profile`  
-**Implementado:** Configuração de objetivo de estudo; configuração de taxa de retenção FSRS (70-99%); toggle de tema claro/escuro  
-**Não Implementado:** Edição de nome/avatar/email; alteração de senha (com confirmação); gerenciamento de disciplinas ativas; mudanças sensíveis com validação de senha atual
+**Rota Frontend:** `/profile`
+
+**Descrição:** Página de perfil completa com 5 seções: identidade, alteração de senha, parâmetros de estudo, disciplinas e preferências do app.
+
+**Seção Identidade:**
+- Nome de exibição (input, máx 40 chars) — aparece no ranking e estatísticas
+- Avatar gerado por iniciais (1–2 letras do nome ou email)
+- 8 cores de avatar selecionáveis via color swatches com anel de seleção indigo
+- Email da conta exibido como read-only (com nota "Não editável")
+- Persistência: `cyanki_display_name`, `cyanki_avatar_color` no `localStorage`
+
+**Seção Alterar Senha:**
+- Campos: senha atual (validação de segurança), nova senha, confirmação
+- Medidor de força da senha em tempo real (4 níveis: Fraca/Razoável/Boa/Forte) via regex
+- Validação inline: aviso vermelho se nova ≠ confirmação
+- Botão desabilitado até todos os campos preenchidos e senhas coincidentes
+- `POST /auth/change-password` com `Authorization: Bearer <token>`
+- Feedback visual: banner verde (sucesso) ou vermelho (erro com mensagem da API)
+- Campos limpos após sucesso
+
+**Seção Parâmetros de Estudo:**
+- Input de objetivo em texto livre
+- Slider FSRS 70–99% com hint contextual dinâmico (5 faixas de texto)
+
+**Seção Disciplinas Ativas:**
+- Mesmas 12 disciplinas do onboarding com ícones emoji
+- Toggle pills com contador "X selecionada(s)"
+- Persistência: `cyanki_subjects` (JSON array)
+
+**Seção Preferências do App:**
+- Toggle de modo escuro (aplica imediatamente via `classList.add/remove('dark')`)
+- Notificações: 3 estados — botão "Ativar" (`default`), badge verde "Ativas" (`granted`), badge vermelho "Bloqueadas" (`denied`)
+
+**Salvar:**
+- Botão "Salvar" no header e no rodapé da página
+- Feedback "Salvo!" com ícone de check por 2,5s após salvar
+- Alteração de senha tem fluxo próprio com POST à API (não depende do botão Salvar global)
 
 ---
 
