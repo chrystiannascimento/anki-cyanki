@@ -628,12 +628,53 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 ---
 
 #### UC-22 — Onboarding e Configuração Inicial do Perfil
-**Status:** ⚠️ Parcialmente Implementado
+**Status:** ✅ Implementado
 
 **Ator:** Novo Usuário  
-**Rota Frontend:** `/onboarding` (rota existe)  
-**Implementado:** Rota de onboarding declarada na estrutura do projeto  
-**Não Implementado:** Fluxo guiado completo (definição de objetivo, seleção de disciplinas, configuração de retenção FSRS, autorização de notificações); persistência das preferências do onboarding; recomendação de conteúdo inicial
+**Rota Frontend:** `/onboarding`
+
+**Descrição:** Wizard de 4 passos exibido automaticamente após o registro. Configura objetivo, disciplinas, retenção FSRS e notificações, persistindo tudo no `localStorage`.
+
+**Fluxo completo:**
+
+**Guards de entrada:**
+- Se `!session.token` → redireciona para `/login`
+- Se `cyanki_profile_setup === 'true'` → redireciona para `/dashboard` (onboarding já concluído)
+- `register/+page.svelte` já redireciona para `/onboarding` após registro bem-sucedido
+
+**Passo 1 — Objetivo:**
+- Input de texto livre para objetivo principal
+- 4 presets clicáveis como atalho ("Passar em concurso público", "Aprender um idioma", etc.)
+- Botão rotula-se "Pular →" quando campo vazio, "Próximo →" quando preenchido
+
+**Passo 2 — Disciplinas:**
+- 12 disciplinas em PT-BR com ícone emoji (Matemática, Direito, Idiomas, etc.)
+- Toggle pills: estado selecionado em indigo, não selecionado em neutro
+- Seleção opcional — pode avançar sem escolher nenhuma
+- Contador "X disciplina(s) selecionada(s)"
+
+**Passo 3 — FSRS + Notificações:**
+- Slider de retenção FSRS (70–99%, padrão 90%)
+- Hint contextual dinâmico que explica o impacto da taxa escolhida (5 faixas)
+- Botão "Permitir notificações" → `Notification.requestPermission()`
+- Estados: `default` (botão), `granted` (badge verde "Ativado"), `denied` (badge vermelho + instrução)
+
+**Passo 4 — Confirmação:**
+- Ícone de check verde centralizado
+- Resumo em cards: Objetivo / Disciplinas / FSRS / Notificações
+- Botão "Começar a estudar →" → salva tudo e vai para `/dashboard`
+
+**Persistência (`localStorage`):**
+- `cyanki_profile_setup = 'true'`
+- `cyanki_goal` — objetivo em texto
+- `cyanki_subjects` — JSON array dos IDs selecionados
+- `cyanki_retention` — taxa FSRS (número)
+- `cyanki_notifications` — `'true'` | `'false'`
+
+**UX:**
+- Barra de progresso com círculos numerados + linhas conectoras (indigo quando completo, branco/opaco quando futuro)
+- Botão "Pular configuração" em texto pequeno abaixo dos botões de navegação (disponível em todos os passos exceto o último)
+- Nota de rodapé: "Você pode alterar todas as configurações depois em Perfil."
 
 ---
 
