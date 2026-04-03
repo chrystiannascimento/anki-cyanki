@@ -444,10 +444,33 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 ---
 
 #### UC-15 — Gerenciamento de Download Paginado e Controle de Armazenamento
-**Status:** ❌ Não Implementado
+**Status:** ✅ Implementado
 
 **Ator:** Estudante  
-**Previsto:** Download de conteúdo extenso em pacotes gerenciáveis (blocos de 500 questões). Painel dedicado para visualizar pacotes baixados, uso de espaço e exclusão individual para liberar storage.
+**Rota Frontend:** `/storage`
+
+**Descrição:** Painel dedicado para visualizar e gerenciar o armazenamento offline. Exibe uso de espaço total via Storage API, lista conteúdo em pacotes exportáveis por caderno e filtro salvo (chunks de 500 cards em JSON), e oferece ferramentas de limpeza granular.
+
+**Visão Geral de Espaço:**
+- Anel SVG com % de uso (`navigator.storage.estimate()`); cor adaptativa: indigo → âmbar ≥60% → vermelho ≥85%
+- Total usado, cota disponível, cache de mídia (bytes + n° arquivos)
+- Grid com contagem por tabela: Flashcards, Cadernos, Revisões, Desafios
+
+**Pacotes por Caderno:**
+- Contagem de cards via regex `<!--id:...-->` no conteúdo do caderno
+- **Exportar**: JSON em chunks de 500 cards com metadados (título, data, nº pacote/total)
+- **Excluir**: remove caderno + cards associados em transação Dexie atômica
+
+**Pacotes por Filtro Salvo:**
+- Contagem real executando critérios no acervo local
+- **Exportar**: JSON paginado com critérios do filtro e cards
+
+**Ferramentas de Limpeza:**
+- Cache de mídia: selector de idade (7/14/30 dias) + `pruneOldMedia()` + limpar tudo
+- Revisões antigas: selector (30/60/90/180 dias) + delete por `reviewedAt < cutoff`
+- Zona de Perigo: confirmação dois cliques → `clearCyankiData()` (apaga tudo)
+
+**Sidebar:** Link "Armazenamento" com ícone de arquivo/caixas adicionado abaixo de History
 
 ---
 
