@@ -565,11 +565,40 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 ---
 
 #### UC-19 — Busca Instantânea com Indexação Local
-**Status:** ⚠️ Parcialmente Implementado
+**Status:** ✅ Implementado
 
 **Ator:** Estudante  
-**Implementado:** Filtragem por tags usando índice Dexie; busca por palavra-chave no front/back dos cards  
-**Não Implementado:** Índice invertido em memória mapeando tags para posições de cards dentro do editor; busca dentro do editor de caderno (por tag, termo, posição de card); destaque visual de cards encontrados
+**Rota Frontend:** `/notebooks/[id]`
+
+**Descrição:** Busca instantânea no painel de Flashcards do editor de cadernos, com índice invertido em memória e destaque visual dos termos encontrados.
+
+**Índice invertido em memória:**
+- `buildIndex(cards)` reconstrói `tagIndex` (tag → Set\<índice\>) e `termIndex` (token → Set\<índice\>) sempre que `sessionFlashcards` muda (reativo via `$:`)
+- `termIndex` tokeniza `front + back` por `\W+`, filtrando tokens com mais de 1 char
+- `tagIndex` indexa cada tag em lowercase
+
+**Busca:**
+- Ativação: botão lupa no header do painel de Flashcards, ou **Ctrl+F** / **Cmd+F** global (interceptado no container do editor)
+- Sintaxe `#tag` → busca no `tagIndex` (correspondência exata)
+- Texto livre → busca AND em todos os tokens no `termIndex` (substring match nos keys do índice)
+- Badge "X de Y" mostra contagem de resultados; fica vermelho quando nenhum card é encontrado
+
+**Destaque visual:**
+- `highlightText(text, query)` escapa HTML e envolve matches com `<mark class="bg-yellow-200 ...">` — sem risco de XSS pois o texto é escapado antes
+- Aplica highlight no `front` e no `back` de cada card
+
+**Pular para o editor:**
+- Botão de seta (↗) visível em cada card quando a busca está ativa
+- `jumpToCard(card)` localiza a posição do `card.front` no conteúdo do textarea via `String.indexOf`, move cursor para aquela posição com `setSelectionRange` e ajusta `scrollTop` para centralizar a linha
+
+**Tag pills clicáveis:**
+- Clicar em qualquer tag de um card preenche a busca com `#tag` e abre o painel de busca automaticamente
+
+**Integração com UC-17 (virtual scroll):**
+- `displayedFlashcards` = `sessionFlashcards` filtrado por `matchedIndices`
+- O virtual scroll opera sobre `displayedFlashcards`, preservando a performance com cadernos grandes mesmo durante busca
+
+**Fechar busca:** Esc ou botão × limpa a query e fecha o painel
 
 ---
 
