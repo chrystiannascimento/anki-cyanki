@@ -893,7 +893,7 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 | **RF-02** | O sistema deve autenticar usuários via JWT com expiração configurável. | ✅ |
 | **RF-03** | O sistema deve proteger rotas da aplicação exigindo token válido. | ✅ |
 | **RF-04** | O sistema deve oferecer login social (Google, Apple). | ❌ |
-| **RF-05** | O sistema deve oferecer recuperação de senha via email com link temporário. | ❌ |
+| **RF-05** | O sistema deve oferecer recuperação de senha via email com link temporário. | ✅ |
 | **RF-06** | O sistema deve implementar refresh token para sessões de longa duração. | ❌ |
 
 ### 4.2 Flashcards e Cadernos
@@ -906,10 +906,10 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 | **RF-10** | O sistema deve gerar e injetar NanoID em flashcards criados via caderno sem ID. | ✅ |
 | **RF-11** | O sistema deve deduplical flashcards por normalização do texto `front`. | ✅ |
 | **RF-12** | O sistema deve suportar deleção soft de flashcards e cadernos. | ✅ |
-| **RF-13** | O sistema deve oferecer preview em tempo real do Markdown com debounce. | ⚠️ |
-| **RF-14** | O sistema deve usar Web Worker para parsing de cadernos com 100+ blocos. | ❌ |
-| **RF-15** | O sistema deve usar virtual scroll para renderização de cadernos grandes. | ❌ |
-| **RF-16** | O sistema deve suportar busca por tag/termo dentro do editor de caderno com destaque. | ❌ |
+| **RF-13** | O sistema deve oferecer preview em tempo real do Markdown com debounce. | ✅ |
+| **RF-14** | O sistema deve usar Web Worker para parsing de cadernos grandes (≥40 blocos). | ✅ |
+| **RF-15** | O sistema deve usar virtual scroll para renderização de cadernos grandes. | ✅ |
+| **RF-16** | O sistema deve suportar busca por tag/termo dentro do editor de caderno com destaque. | ✅ |
 
 ### 4.3 Estudo com FSRS
 
@@ -920,8 +920,8 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 | **RF-19** | O sistema deve recalcular o agendamento FSRS após cada revisão. | ✅ |
 | **RF-20** | O sistema deve permitir configurar a taxa de retenção FSRS por usuário. | ✅ |
 | **RF-21** | O sistema deve oferecer modo de prática simples (flip card) sem FSRS. | ✅ |
-| **RF-22** | O sistema deve calcular e exibir níveis de proficiência (Mastery) por tópico. | ❌ |
-| **RF-23** | O sistema deve oferecer mini-games educativos desbloqueados por XP. | ❌ |
+| **RF-22** | O sistema deve calcular e exibir níveis de proficiência (Mastery) por tópico. | ✅ |
+| **RF-23** | O sistema deve oferecer mini-games educativos desbloqueados por moedas ganhas no FSRS. | ✅ |
 
 ### 4.4 Filtragem e Busca
 
@@ -932,7 +932,7 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 | **RF-26** | O sistema deve ordenar resultados por data (mais recente / mais antigo). | ✅ |
 | **RF-27** | O sistema deve paginar resultados com 20 itens por página. | ✅ |
 | **RF-28** | O sistema deve permitir salvar combinações de filtros para reutilização. | ✅ |
-| **RF-29** | O sistema deve exibir analytics de desempenho isolados para cada filtro salvo. | ❌ |
+| **RF-29** | O sistema deve exibir analytics de desempenho isolados para cada filtro salvo. | ✅ |
 
 ### 4.5 Sincronização Offline-First
 
@@ -942,9 +942,9 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 | **RF-31** | O sistema deve sincronizar automaticamente ao detectar conexão disponível. | ✅ |
 | **RF-32** | O sistema deve resolver conflitos de sincronização por timestamp. | ✅ |
 | **RF-33** | O sistema deve suportar operações CRUD de flashcards, cadernos e review logs no push. | ✅ |
-| **RF-34** | O sistema deve armazenar assets estáticos no Cache API via Service Worker. | ❌ |
-| **RF-35** | O sistema deve armazenar mídias dinâmicas como Blobs no IndexedDB. | ❌ |
-| **RF-36** | O sistema deve oferecer painel de controle de armazenamento offline. | ❌ |
+| **RF-34** | O sistema deve armazenar assets estáticos no Cache API via Service Worker. | ✅ |
+| **RF-35** | O sistema deve armazenar mídias dinâmicas como Blobs no IndexedDB. | ✅ |
+| **RF-36** | O sistema deve oferecer painel de controle de armazenamento offline. | ✅ |
 
 ### 4.6 Gamificação e Engajamento
 
@@ -955,9 +955,9 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 | **RF-39** | O sistema deve exibir ranking global de usuários por XP. | ✅ |
 | **RF-40** | O sistema deve calcular e exibir ranking projetado quando offline. | ✅ |
 | **RF-41** | O sistema deve exibir feedback visual (confetti) ao completar revisões. | ✅ |
-| **RF-42** | O sistema deve oferecer widget de "continuar de onde parou" na tela inicial. | ❌ |
-| **RF-43** | O sistema deve permitir criação de desafios comunitários com código de compartilhamento. | ❌ |
-| **RF-44** | O sistema deve permitir criação de metas de estudo com notificações agendadas. | ❌ |
+| **RF-42** | O sistema deve oferecer widget de "continuar de onde parou" na tela inicial. | ✅ |
+| **RF-43** | O sistema deve permitir criação de desafios comunitários com código de compartilhamento. | ✅ |
+| **RF-44** | O sistema deve permitir criação de metas de estudo com notificações locais. | ✅ |
 
 ### 4.7 Analytics e Histórico
 
@@ -966,9 +966,9 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 | **RF-45** | O sistema deve exibir histórico detalhado de revisões com timestamps e grades. | ✅ |
 | **RF-46** | O sistema deve exibir contadores de total, cards únicos e revisões do dia. | ✅ |
 | **RF-47** | O sistema deve exportar histórico em CSV. | ✅ |
-| **RF-48** | O sistema deve exibir gráficos interativos de evolução de desempenho temporal. | ❌ |
-| **RF-49** | O sistema deve filtrar o dashboard por período (Hoje/7d/30d/Sempre). | ❌ |
-| **RF-50** | O sistema deve exportar histórico em PDF. | ❌ |
+| **RF-48** | O sistema deve exibir gráficos interativos de evolução de desempenho temporal. | ✅ |
+| **RF-49** | O sistema deve filtrar o dashboard por período (Hoje/7d/30d/Sempre). | ✅ |
+| **RF-50** | O sistema deve exportar histórico em PDF. | ✅ |
 
 ### 4.8 Comunidade
 
@@ -982,11 +982,11 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 
 | ID | Requisito | Status |
 |---|---|---|
-| **RF-54** | O sistema deve oferecer fluxo de onboarding guiado no primeiro acesso. | ⚠️ |
+| **RF-54** | O sistema deve oferecer fluxo de onboarding guiado no primeiro acesso. | ✅ |
 | **RF-55** | O sistema deve permitir configuração de preferências de perfil (retenção FSRS, tema). | ✅ |
-| **RF-56** | O sistema deve permitir edição de nome, avatar e email com validação de senha. | ❌ |
-| **RF-57** | O sistema deve oferecer painel de privacidade (LGPD) com exclusão de dados. | ❌ |
-| **RF-58** | O sistema deve suportar exclusão total de conta com remoção de dados em 30 dias. | ❌ |
+| **RF-56** | O sistema deve permitir edição de nome e avatar com validação de senha (email read-only). | ⚠️ |
+| **RF-57** | O sistema deve oferecer painel de privacidade (LGPD) com exclusão de dados. | ✅ |
+| **RF-58** | O sistema deve suportar exclusão total de conta com remoção de dados em 30 dias. | ✅ |
 
 ---
 
@@ -1000,7 +1000,7 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 | Senha | Input password | Sim | Mínimo 8 caracteres | ✅ |
 | Botão "Entrar" | Button | — | Submete formulário | ✅ |
 | Link "Criar conta" | Link | — | Navega para `/register` | ✅ |
-| Link "Esqueci a senha" | Link | — | Inicia recuperação por email | ❌ |
+| Link "Esqueci a senha" | Link | — | Navega para `/forgot-password` | ✅ |
 | Botão "Entrar com Google" | Button OAuth | — | OAuth2 Google | ❌ |
 | Botão "Entrar com Apple" | Button OAuth | — | OAuth2 Apple | ❌ |
 | Mensagem de erro | Alert | — | Exibida em credenciais inválidas (mensagem genérica) | ✅ |
@@ -1024,12 +1024,15 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 
 | Campo | Tipo | Obrigatório | Validação | Status |
 |---|---|---|---|---|
-| Objetivo de estudo | Select/Radio | Sim | Concurso / Vestibular / Certificação / Outro | ❌ |
-| Disciplinas de interesse | Multi-select | Não | — | ❌ |
-| Meta de retenção FSRS | Slider | Não | 70-99% (padrão 90%) | ❌ |
-| Autorizar notificações | Toggle | Não | — | ❌ |
-| Botão "Começar" | Button | — | Conclui onboarding | ❌ |
-| Link "Pular" | Link | — | Ignora onboarding (configurações padrão) | ❌ |
+| Objetivo de estudo (texto livre + 4 presets) | Input text + Radio pills | Não | — | ✅ |
+| Disciplinas de interesse (12 opções com emoji) | Multi-select pills | Não | — | ✅ |
+| Meta de retenção FSRS | Slider | Não | 70-99% (padrão 90%) | ✅ |
+| Autorizar notificações | Button | Não | 3 estados: default / granted / denied | ✅ |
+| Botão "Próximo / Pular →" | Button | — | Avança passo (label muda conforme preenchimento) | ✅ |
+| Barra de progresso com círculos numerados | Progress indicator | — | 4 passos com linhas conectoras | ✅ |
+| Link "Pular configuração" | Link | — | Ignora onboarding (configurações padrão) | ✅ |
+| Botão "Começar a estudar →" (passo 4) | Button | — | Persiste configurações e navega para `/dashboard` | ✅ |
+| Resumo de configurações (passo 4) | Cards | — | Objetivo, disciplinas, FSRS, notificações | ✅ |
 
 ---
 
@@ -1057,8 +1060,15 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 | Painel de preview | Div renderizado | — | Markdown sanitizado com DOMPurify | ✅ |
 | Indicador "Salvo" / "Salvando..." | Label status | — | Atualiza conforme auto-save | ✅ |
 | Contador de flashcards parseados | Badge | — | Número de cards detectados no documento | ✅ |
+| Badge de modo de parsing | Badge | — | ⚡ Worker / 🔄 Incremental / 📋 Sync + tempo em ms | ✅ |
 | Botão "Voltar" | Button | — | Retorna para `/notebooks` | ✅ |
-| Campo de busca no caderno | Input search | Não | Busca por tag/termo dentro do editor | ❌ |
+| Botão lupa (Ctrl+F / Cmd+F) | Button / Atalho | Não | Abre/fecha barra de busca no painel de flashcards | ✅ |
+| Campo de busca no painel de Flashcards | Input search | Não | `#tag` ou texto livre (AND tokens); badge "X de Y" | ✅ |
+| Badge "X de Y resultados" | Badge | — | Vermelho quando 0 resultados | ✅ |
+| Botão pular para editor (↗) | Button | — | Move cursor e scroll do textarea para o card | ✅ |
+| Tag pills clicáveis | Pills | — | Preenche busca com `#tag` ao clicar | ✅ |
+| Índice `#N` por card | Badge | — | Visível apenas em modo virtual scroll | ✅ |
+| Rodapé "Renderizando X de Y cards" | Label | — | Visível apenas quando virtual scroll está ativo | ✅ |
 
 ---
 
@@ -1133,15 +1143,19 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 
 | Campo | Tipo | Obrigatório | Validação | Status |
 |---|---|---|---|---|
-| Total de revisões | Card/Counter | — | Soma de todos review logs | ✅ |
-| Cards únicos estudados | Card/Counter | — | Distinct flashcard_id | ✅ |
-| Revisões hoje | Card/Counter | — | Revisões com `reviewed_at` hoje | ✅ |
-| Tabela de revisões | Table | — | flashcard front, grade, estado, timestamp | ✅ |
-| Botão "Exportar CSV" | Button | — | Download do histórico em CSV | ✅ |
-| Filtro por período | Tabs/Select | Não | Hoje / 7 dias / 30 dias / Sempre | ❌ |
-| Filtro por disciplina | Select | Não | — | ❌ |
-| Gráfico de evolução | Chart | — | Taxa de acerto por período | ❌ |
-| Botão "Exportar PDF" | Button | — | Download do histórico em PDF | ❌ |
+| Filtro por período | Pills | Não | Hoje / 7 dias / 30 dias / Sempre | ✅ |
+| Filtro por disciplina/tag | Select | Não | Populado dinamicamente a partir dos logs do período | ✅ |
+| KPI: Total de revisões | Card/Counter | — | Soma de todos review logs no período | ✅ |
+| KPI: Cards únicos estudados | Card/Counter | — | Distinct flashcard_id no período | ✅ |
+| KPI: Taxa de acerto (%) | Card/Counter | — | (Good+Easy) / total; cor adaptativa verde/âmbar/rosa | ✅ |
+| KPI: Sequência atual 🔥 | Card/Counter | — | Dias consecutivos com revisão | ✅ |
+| Gráfico de atividade diária | Barras CSS bicolores | — | Azul escuro = acerto, azul claro = erro; tooltip hover | ✅ |
+| Gráfico de evolução de acerto | Barras CSS adaptativas | — | % de acerto por dia; cor verde/âmbar/rosa | ✅ |
+| Distribuição de avaliações FSRS | Barras de progresso | — | Again / Hard / Good / Easy com % | ✅ |
+| Tabela de revisões (paginada, 20/página) | Table | — | flashcard front, tags, grade (badge colorido), estado, timestamp | ✅ |
+| Paginação | Controls | — | Anterior / Próxima | ✅ |
+| Botão "Exportar CSV" | Button | — | Download dos logs filtrados em UTF-8 | ✅ |
+| Botão "Exportar PDF" | Button | — | Relatório HTML completo; abre nova aba + print dialog | ✅ |
 
 ---
 
@@ -1149,15 +1163,21 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 
 | Campo | Tipo | Obrigatório | Validação | Status |
 |---|---|---|---|---|
-| Nome de usuário | Input text | Não | — | ❌ |
-| Avatar | Upload image | Não | — | ❌ |
-| Email | Input text | Sim | Formato email válido, único | ❌ |
-| Senha atual (para mudanças sensíveis) | Input password | Condicional | — | ❌ |
-| Objetivo de estudo | Select | Não | — | ✅ |
-| Taxa de retenção FSRS | Slider | Não | 70-99% | ✅ |
-| Tema da interface | Toggle | Não | Claro / Escuro | ✅ |
-| Preferências de notificação | Toggle | Não | — | ❌ |
-| Botão "Salvar" | Button | — | Persiste alterações | ✅ |
+| Nome de exibição | Input text | Não | Máx 40 caracteres | ✅ |
+| Avatar por iniciais | Avatar gerado | — | 1–2 letras do nome ou email | ✅ |
+| Seletor de cor do avatar | Color swatches (8) | Não | Anel de seleção indigo no ativo | ✅ |
+| Email da conta | Input text (read-only) | — | Não editável — exibido com nota | ⚠️ |
+| Senha atual | Input password | Condicional | Requerido para trocar senha | ✅ |
+| Nova senha | Input password | Condicional | — | ✅ |
+| Confirmar nova senha | Input password | Condicional | Deve coincidir com nova senha | ✅ |
+| Medidor de força da senha | Progress indicator | — | 4 níveis: Fraca / Razoável / Boa / Forte | ✅ |
+| Objetivo de estudo | Input text | Não | — | ✅ |
+| Taxa de retenção FSRS | Slider | Não | 70-99% com hint contextual dinâmico | ✅ |
+| Disciplinas ativas (12 opções) | Multi-select pills | Não | — | ✅ |
+| Tema da interface | Toggle | Não | Aplica `dark` imediatamente via classList | ✅ |
+| Preferências de notificação | Button | Não | 3 estados: Ativar / Ativas / Bloqueadas | ✅ |
+| Botão "Salvar" (header + rodapé) | Button | — | Feedback "Salvo! ✓" por 2,5s | ✅ |
+| Card "Privacidade & Dados" | Card/Link | — | Link para `/privacy` | ✅ |
 
 ---
 
@@ -1168,41 +1188,199 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 | Lista de cadernos públicos | List/Grid | — | Título, autor, data de criação | ✅ |
 | Botão "Clonar" por item | Button | — | Cria cópia pessoal com "(Clone)" no título | ✅ |
 | Preview do conteúdo | Expandable | — | Primeiros caracteres do Markdown | ✅ |
-| Busca/filtro de cadernos | Input search | Não | — | ❌ |
+| Busca por código de desafio | Input search | Não | Busca local na tabela `challenges` | ✅ |
+| Lista de desafios criados (aba Desafios) | List | — | Título, código, stats (cards, tentativas, data) | ✅ |
+| Botão "Criar Desafio" | Button | — | Navega para `/community/create` | ✅ |
+
+---
+
+### 5.13 `/community/create` — Criar Desafio
+
+| Campo | Tipo | Obrigatório | Validação | Status |
+|---|---|---|---|---|
+| Título do desafio | Input text | Sim | Mínimo 1 caractere | ✅ |
+| Descrição | Textarea | Não | — | ✅ |
+| Filtro: Tags | Multi-select | Não | — | ✅ |
+| Filtro: Palavra-chave | Input text | Não | — | ✅ |
+| Quantidade de cards | Slider/Input | Não | 5–20 | ✅ |
+| Visibilidade | Toggle | Não | Público / Privado | ✅ |
+| Pré-visualização dos cards sorteados | List | — | Cards aleatórios do acervo local | ✅ |
+| Botão "Sortear novamente" | Button | — | Embaralha nova seleção | ✅ |
+| Botão "Criar Desafio" | Button | — | Persiste no Dexie com código único 6-char | ✅ |
+
+---
+
+### 5.14 `/community/challenge/[code]` — Jogar Desafio
+
+| Campo | Tipo | Obrigatório | Validação | Status |
+|---|---|---|---|---|
+| Tela de apresentação | Page | — | Nome, descrição, total de questões, tentativas anteriores | ✅ |
+| Card front | Div texto | — | Markdown renderizado | ✅ |
+| Botão "Revelar Resposta" (Espaço) | Button | — | Exibe back do card | ✅ |
+| Card back | Div texto | — | Markdown renderizado (oculto até revelar) | ✅ |
+| Botão "Errei" (← / F) | Button | — | Marca como incorreto | ✅ |
+| Botão "Acertei" (→ / J) | Button | — | Marca como correto | ✅ |
+| Tela de resultado | Page | — | Anel SVG com %, contagem acertos/erros, label avaliação | ✅ |
+| Botão "Jogar novamente" | Button | — | Reinicia sequência | ✅ |
+
+---
+
+### 5.15 `/forgot-password` — Recuperação de Senha
+
+| Campo | Tipo | Obrigatório | Validação | Status |
+|---|---|---|---|---|
+| Email | Input text | Sim | Formato email válido | ✅ |
+| Botão "Enviar link" | Button | — | `POST /auth/forgot-password` | ✅ |
+| Mensagem de sucesso | Alert | — | Texto neutro — não confirma existência da conta | ✅ |
+| Mensagem de erro | Alert | — | Erro da API | ✅ |
+| Link "← Voltar ao login" | Link | — | Navega para `/login` | ✅ |
+
+---
+
+### 5.16 `/reset-password` — Redefinição de Senha
+
+| Campo | Tipo | Obrigatório | Validação | Status |
+|---|---|---|---|---|
+| Token (lido do URL `?token=`) | Hidden | — | Ausente → tela "Link inválido" | ✅ |
+| Nova senha | Input password | Sim | — | ✅ |
+| Confirmar nova senha | Input password | Sim | Deve coincidir com nova senha | ✅ |
+| Medidor de força da senha | Progress indicator | — | 4 níveis: Fraca / Razoável / Boa / Forte | ✅ |
+| Botão "Redefinir senha" | Button | — | `POST /auth/reset-password { token, new_password }` | ✅ |
+| Tela de link inválido | Alert | — | Botão para solicitar novo link | ✅ |
+| Tela de confirmação de sucesso | Alert | — | Botão "Ir para o login" | ✅ |
+
+---
+
+### 5.17 `/mastery` — Mestria por Tópico
+
+| Campo | Tipo | Obrigatório | Validação | Status |
+|---|---|---|---|---|
+| KPI: Score médio geral (anel SVG) | Card clicável | — | Reseta filtro de nível ao clicar | ✅ |
+| KPI: Contagem por nível | Cards clicáveis | — | Filtra grid pelo nível ao clicar | ✅ |
+| Banner de alerta (tópicos em decay) | Alert | — | Exibido quando algum tópico > 14 dias sem revisão | ✅ |
+| Busca por nome de tag | Input search | Não | Filtra o grid de cards | ✅ |
+| Filtro por nível | Pills | Não | Iniciante / Familiarizado / Proficiente / Mestre | ✅ |
+| Grid de cards por tag | Cards | — | Anel SVG animado, badge de nível, stats, data da última revisão | ✅ |
+| Indicador de decay (laranja) | Badge no anel | — | Aparece quando > 14 dias sem revisão | ✅ |
+
+---
+
+### 5.18 `/goals` — Metas de Estudo
+
+| Campo | Tipo | Obrigatório | Validação | Status |
+|---|---|---|---|---|
+| Banner de permissão de notificação | Alert | — | Exibido quando `Notification.permission === 'default'` | ✅ |
+| Tipo de meta | Select/Radio | Sim | Volume de cards / XP acumulado / Minutos de foco | ✅ |
+| Período | Select | Sim | Diária / Semanal | ✅ |
+| Meta (quantidade) | Input number | Sim | Presets rápidos clicáveis por tipo | ✅ |
+| Toggle "Notificar ao atingir" | Toggle | Não | — | ✅ |
+| Botão "Criar meta" | Button | — | Persiste no Dexie | ✅ |
+| Lista de metas ativas | List | — | Progresso em tempo real com barra colorida | ✅ |
+| Link para `/goals/timer` | Link/Button | — | — | ✅ |
+
+---
+
+### 5.19 `/goals/timer` — Timer de Foco
+
+| Campo | Tipo | Obrigatório | Validação | Status |
+|---|---|---|---|---|
+| Selector de modo | Tabs | Não | Cronômetro / Contagem regressiva | ✅ |
+| Duração (modo regressivo) | Select | Não | 15 / 25 / 45 / 60 / 90 min | ✅ |
+| Anel SVG animado | Animação | — | Indigo = rodando; cinza = pausado | ✅ |
+| Botão Iniciar / Pausar / Resetar | Buttons | — | — | ✅ |
+| Resumo diário (minutos focados hoje) | Label | — | Atualizado em tempo real | ✅ |
+| Metas de tempo ativas | List | — | Barras de progresso reativas | ✅ |
+
+---
+
+### 5.20 `/practice/filter-stats/[id]` — Analytics por Filtro Salvo
+
+| Campo | Tipo | Obrigatório | Validação | Status |
+|---|---|---|---|---|
+| Seletor de período | Pills | Não | 7 dias / 30 dias / 90 dias / Sempre | ✅ |
+| KPI: Taxa de acerto (%) | Card | — | Com barra de progresso colorida | ✅ |
+| KPI: Total de revisões | Card | — | — | ✅ |
+| KPI: Cards revistos | Card | — | — | ✅ |
+| KPI: Cards nunca revistos | Card | — | Com alerta quando > 0 | ✅ |
+| Gráfico de atividade diária | Barras CSS | — | Tooltip hover com contagem do dia | ✅ |
+| Distribuição de avaliações (Again/Hard/Good/Easy) | Barras de progresso | — | Com percentuais | ✅ |
+| Cobertura do caderno | Barra de progresso | — | % de cards revisados no período | ✅ |
+| Botão "Praticar" | Button | — | Inicia `/practice/solve/[id]` | ✅ |
+| Botão "Estudar com FSRS" | Button | — | Inicia `/practice/study/[id]` | ✅ |
+
+---
+
+### 5.21 `/privacy` — Privacidade e Dados (LGPD)
+
+| Campo | Tipo | Obrigatório | Validação | Status |
+|---|---|---|---|---|
+| Tabela "Dados que coletamos" (5 categorias) | Table | — | Item, local (Local/Servidor), base legal | ✅ |
+| Inventário local (contagem por tabela Dexie) | List | — | Carregado via `Promise.all` em onMount | ✅ |
+| Botão "Exportar meus dados" | Button | — | JSON com envelope completo; download automático | ✅ |
+| Botão "Excluir histórico de revisões" | Button (amber) | — | Confirmação em 1 passo; exibe contagem a remover | ✅ |
+| Formulário "Excluir conta" | Form (red) | — | 2 passos: botão → senha → `DELETE /auth/delete-account` | ✅ |
+| Campo senha para exclusão de conta | Input password | Condicional | Requerido no passo 2 | ✅ |
+| Tabela de direitos LGPD (Art. 18, I–VI, IX) | Table | — | 7 artigos com descrição e como exercer | ✅ |
+| Contato DPO | Text | — | `privacy@cyanki.app` | ✅ |
+
+---
+
+### 5.22 `/storage` — Armazenamento Offline
+
+| Campo | Tipo | Obrigatório | Validação | Status |
+|---|---|---|---|---|
+| Anel SVG de uso de espaço | Gauge | — | % do Storage API; indigo → âmbar ≥60% → vermelho ≥85% | ✅ |
+| Contadores por tabela Dexie | Grid | — | Flashcards, Cadernos, Revisões, Desafios | ✅ |
+| Lista de cadernos (Exportar / Excluir) | List | — | Contagem de cards via regex no conteúdo | ✅ |
+| Lista de filtros salvos (Exportar) | List | — | Contagem real executando critérios no acervo | ✅ |
+| Seletor de idade — cache de mídia | Select | Não | 7 / 14 / 30 dias | ✅ |
+| Botão "Limpar cache de mídia" | Button | — | `pruneOldMedia()` | ✅ |
+| Seletor de corte — revisões antigas | Select | Não | 30 / 60 / 90 / 180 dias | ✅ |
+| Botão "Excluir revisões antigas" | Button (amber) | — | Delete por `reviewedAt < cutoff` | ✅ |
+| Botão "Limpar tudo" (Zona de Perigo) | Button (red) | — | 2 cliques de confirmação → `clearCyankiData()` | ✅ |
+
+---
+
+### 5.23 `/games` — Mini-Games (Lobby)
+
+| Campo | Tipo | Obrigatório | Validação | Status |
+|---|---|---|---|---|
+| Saldo de moedas 🪙 | Badge destaque | — | Persistido no localStorage | ✅ |
+| Card "Desafio Cronometrado" | Card | — | Custo 30 moedas; barra de progresso até custo se bloqueado | ✅ |
+| Card "Jogo da Memória" | Card | — | Custo 50 moedas; barra de progresso até custo se bloqueado | ✅ |
+| Botão "Jogar Agora" | Button | — | Ativo apenas com moedas suficientes | ✅ |
+| Orientação "como ganhar moedas" | Text | — | Exibido quando saldo = 0 | ✅ |
 
 ---
 
 ## Apêndice — Backlog Priorizado
 
-### Alta Prioridade (impacto direto na experiência de estudo)
+### Concluídos (todos os UCs do backlog original)
 
-| ID | Feature | Tipo |
-|---|---|---|
-| UC-14 | Gráficos interativos de desempenho no `/history` com filtro por período | Melhoria |
-| UC-06 | Analytics de desempenho isolados por filtro salvo | Novo |
-| UC-22 | Fluxo de onboarding guiado completo | Novo |
-| UC-24 | Recuperação de senha via email; refresh token | Melhoria |
-| UC-23 | Edição completa de perfil (nome, avatar, email, senha) | Melhoria |
+| ID | Feature | Tipo | Status |
+|---|---|---|---|
+| UC-02 | Cache API para assets estáticos; Blobs para mídias dinâmicas | Melhoria | ✅ |
+| UC-06 | Analytics de desempenho isolados por filtro salvo | Novo | ✅ |
+| UC-09 | Levels de proficiência (Mastery) por tópico com anéis de progresso | Novo | ✅ |
+| UC-10 | Mini-games educativos com economia de moedas | Novo | ✅ |
+| UC-11 | Widget "continuar de onde parou" com restauração de contexto | Melhoria | ✅ |
+| UC-12 | Desafios comunitários com código de compartilhamento | Novo | ✅ |
+| UC-13 | Metas de estudo com timer e notificações locais | Novo | ✅ |
+| UC-14 | Gráficos interativos de desempenho no `/history` com filtro por período | Melhoria | ✅ |
+| UC-15 | Painel de gerenciamento de armazenamento offline | Novo | ✅ |
+| UC-16 | Web Worker para parsing incremental em cadernos grandes | Melhoria | ✅ |
+| UC-17 | Virtual scroll no editor de cadernos | Melhoria | ✅ |
+| UC-19 | Índice invertido e busca no editor de cadernos | Melhoria | ✅ |
+| UC-22 | Fluxo de onboarding guiado completo | Novo | ✅ |
+| UC-23 | Edição completa de perfil (nome, avatar, senha) | Melhoria | ✅ |
+| UC-24 | Recuperação de senha via email; modo offline / sessão expirada | Melhoria | ✅ |
+| UC-25 | Exportação PDF do histórico; filtro por disciplina | Melhoria | ✅ |
+| UC-26 | Painel de privacidade LGPD com exclusão de conta | Novo | ✅ |
 
-### Média Prioridade (experiência e engajamento)
+### Pendentes (fora do escopo atual)
 
-| ID | Feature | Tipo |
-|---|---|---|
-| UC-09 | Levels de proficiência (Mastery) por tópico com anéis de progresso | Novo |
-| UC-11 | Widget "continuar de onde parou" com restauração de contexto | Melhoria |
-| UC-13 | Metas de estudo com timer e notificações via Service Worker | Novo |
-| UC-16 | Web Worker para parsing incremental em cadernos grandes | Melhoria |
-| UC-17 | Virtual scroll no editor de cadernos | Melhoria |
-| UC-19 | Índice invertido e busca no editor de cadernos | Melhoria |
-| UC-25 | Exportação PDF do histórico; filtro por disciplina | Melhoria |
-
-### Baixa Prioridade (features avançadas)
-
-| ID | Feature | Tipo |
-|---|---|---|
-| UC-02 | Cache API para assets estáticos; Blobs para mídias dinâmicas | Melhoria |
-| UC-10 | Mini-games educativos com economia de pontos | Novo |
-| UC-12 | Desafios comunitários com código de compartilhamento | Novo |
-| UC-15 | Painel de gerenciamento de armazenamento offline | Novo |
-| UC-26 | Painel de privacidade LGPD com exclusão de conta | Novo |
-| RF-04 | Login social (Google, Apple) | Novo |
+| ID | Feature | Tipo | Prioridade |
+|---|---|---|---|
+| RF-04 | Login social (Google, Apple) | Novo | Baixa |
+| RF-06 | Refresh token automático para sessões longas | Melhoria | Média |
+| RF-56 | Edição de email da conta com validação de unicidade | Melhoria | Baixa |
