@@ -56,6 +56,14 @@
 		<button on:click={createNotebook} class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-md transition-all active:scale-[0.98]">
 			Create
 		</button>
+		<a href="/notebooks/ai-generate" class="inline-flex items-center justify-center gap-1.5 px-4 py-3 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-lg shadow-md transition-all active:scale-[0.98] text-sm whitespace-nowrap">
+			<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+			Gerar com IA
+		</a>
+		<a href="/notebooks/import" class="inline-flex items-center justify-center gap-1.5 px-4 py-3 bg-neutral-700 hover:bg-neutral-600 text-white font-bold rounded-lg shadow-md transition-all active:scale-[0.98] text-sm whitespace-nowrap border border-neutral-600">
+			<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+			Importar .md
+		</a>
 	</section>
 
 	<section class="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -519,6 +519,16 @@
 				</span>
 			{/if}
 
+			<!-- US-06: Generate flashcards with AI button -->
+			<a
+				href="/notebooks/ai-generate?notebookId={notebookId}"
+				class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-violet-600 hover:bg-violet-500 text-white transition-colors shadow"
+				title="Gerar flashcards com IA (US-06)"
+			>
+				<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+				Gerar com IA
+			</a>
+
 			<div class="text-sm font-medium text-neutral-400">
 				{#if isSaving}
 					<span class="text-indigo-500 animate-pulse">Salvando...</span>

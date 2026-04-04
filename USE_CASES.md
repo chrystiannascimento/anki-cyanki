@@ -19,11 +19,16 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 - Comunidade para compartilhamento de cadernos públicos
 - Analytics de desempenho e histórico de estudo
 
+- Geração de flashcards via IA (OpenAI/Anthropic) com chave do próprio usuário
+- Importação de flashcards em formato Prompt Master e Anki básico
+- Renderização interativa de critérios de acerto (checklist) com avaliação automática
+- Classificação de cartões por tipo (CONCEITO / FATO / PROCEDIMENTO)
+
 **Fora do escopo atual:**
 - Vídeo-aulas e conteúdo multimídia pesado
 - Pagamentos e assinaturas
 - Moderação de conteúdo comunitário
-- Integração com plataformas externas (ex: Anki, Quizlet)
+- Intervalo FSRS diferenciado por tipo de cartão (US-10) — planejado
 
 ---
 
@@ -856,6 +861,191 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 
 ---
 
+### 2.10 Ultralearning — Renderização de Checklist
+
+---
+
+#### UC-27 — Renderização Interativa de Checklist no Verso do Cartão
+**Status:** ✅ Implementado
+
+**Ator:** Estudante  
+**Rota Frontend:** `/notebooks/study/[id]`, `/practice/study/[id]`  
+**Módulos:** `frontend/src/lib/checklistRenderer.ts`
+
+**Descrição:** O verso de cartões criados no formato Prompt Master (`- [ ] critério`) é renderizado como uma lista de checkboxes interativos, substituindo os marcadores de texto bruto. Implementa US-01, US-02 e US-03 do Ultralearning spec.
+
+**Fluxo Principal:**
+1. Usuário revela o verso do cartão (flip)
+2. `splitContentAndChecklist(card.back)` separa o texto de resposta dos critérios
+3. Critérios com `- [ ]` renderizados como `<input type="checkbox">` desmarcados
+4. Critérios com `- [x]` renderizados como checkboxes marcados com estilo tachado
+5. Contador "N de Total" atualiza em tempo real a cada toggle
+6. Barra de progresso verde/âmbar/vermelha acompanha o contador
+7. Ao atingir 100%, banner "Todos os critérios atingidos!" aparece em verde
+
+**Variantes de layout suportadas:**
+- Bloco `Critérios:` após a resposta (formato Prompt Master)
+- Linhas `- [ ]` inline em qualquer posição no corpo
+
+**Regras técnicas:**
+- Regex: `/^- \[( |x|X)\] (.+)/`
+- Estado dos checkboxes é in-memory por sessão (não persiste entre cards)
+- Checkboxes não afetam listas normais com `-` sem `[ ]`
+
+---
+
+#### UC-28 — Avaliação Automática por Resultado de Checklist
+**Status:** ✅ Implementado
+
+**Ator:** Estudante  
+**Rota Frontend:** `/notebooks/study/[id]`, `/practice/study/[id]`  
+**Módulos:** `frontend/src/lib/checklistRenderer.ts` (`scoreToRating`)
+
+**Descrição:** Quando o cartão possui critérios de checklist, o sistema sugere automaticamente uma nota FSRS baseada na proporção de critérios marcados (US-04). O usuário pode sobrescrever antes de confirmar.
+
+**Lógica:**
+- **100% marcados** → sugestão: `Good` (intervalo longo) — botão com ring visual
+- **50–99% marcados** → sugestão: `Hard` (intervalo curto) — botão com ring visual
+- **< 50% marcados** → sugestão: `Again` (reagendar para amanhã)
+- Cartões sem checklist → fluxo manual padrão (sem sugestão visual)
+
+**Exibição:**
+- Linha de hint: "Sugestão automática: GOOD (pode sobrescrever)"
+- Botão sugerido tem anel de destaque adicional (`ring-2`)
+
+---
+
+#### UC-29 — Badge Visual de Tipo de Cartão (Ultralearning)
+**Status:** ✅ Implementado
+
+**Ator:** Estudante  
+**Rota Frontend:** `/notebooks/study/[id]`, `/practice/study/[id]`, `/notebooks/ai-generate`, `/notebooks/import`  
+**Campo DB:** `flashcards.type` (CONCEITO | FATO | PROCEDIMENTO)
+
+**Descrição:** Cartões do formato Prompt Master carregam um campo `Tipo:` que é armazenado no DB e exibido como badge colorido no canto superior direito do cartão durante a sessão de estudo (US-09).
+
+**Cores semânticas:**
+- `CONCEITO` → roxo (`bg-violet-500`)
+- `FATO` → âmbar (`bg-amber-500`)
+- `PROCEDIMENTO` → verde (`bg-emerald-500`)
+
+**Regras técnicas:**
+- Campo `type?: FlashcardType` adicionado à interface `Flashcard` em `db.ts`
+- Índice Dexie `type` adicionado na versão 9 do schema
+- Parser `notebookParser.ts` captura `Tipo:` via grupo regex adicional
+- Parser `parsePromptMasterCards` retorna `type` em `ParsedPromptCard`
+
+---
+
+### 2.11 Ultralearning — Integração com IA
+
+---
+
+#### UC-30 — Configuração de Chave de API de IA
+**Status:** ✅ Implementado
+
+**Ator:** Estudante  
+**Rota Frontend:** `/profile`  
+**Módulos:** `frontend/src/lib/aiService.ts`
+
+**Descrição:** O usuário configura sua chave pessoal de API (OpenAI ou Anthropic) diretamente nas configurações de perfil. A chave é armazenada exclusivamente no `localStorage` do dispositivo e nunca transmitida para os servidores do Cyanki (US-05).
+
+**Fluxo Principal:**
+1. Usuário navega para Perfil > Inteligência Artificial
+2. Seleciona o provedor: OpenAI (GPT-4o) ou Anthropic (Claude Sonnet)
+3. Insere a chave no campo tipo `password`
+4. Clica "Salvar" — chave persiste em `localStorage` com chave `cyanki_api_key_<provider>`
+5. Badge verde confirma configuração; botões "Testar" e "Remover" disponíveis
+6. "Testar" faz chamada mínima ao endpoint real e exibe feedback de validade
+
+**Segurança:**
+- Chave nunca logada, nunca enviada ao backend Cyanki
+- Todas as chamadas de IA são feitas diretamente do browser ao provider
+- Erro 401 do provider exibe mensagem: "Chave inválida ou expirada"
+
+---
+
+#### UC-31 — Geração de Flashcards via IA (Caderno ou Tema Livre)
+**Status:** ✅ Implementado
+
+**Ator:** Estudante  
+**Rota Frontend:** `/notebooks/ai-generate`  
+**Módulos:** `frontend/src/lib/aiService.ts`, `frontend/src/lib/notebookParser.ts`
+
+**Descrição:** Tela dedicada para geração de flashcards via IA em dois modos: (1) converter conteúdo de um caderno (US-06) ou (2) descrever um tema em linguagem natural (US-07). Botão "Gerar com IA" disponível na tela de cadernos e no editor de caderno.
+
+**Parâmetros configuráveis (US-07):**
+- Quantidade de cartões (padrão: 10, máximo: 50)
+- Tipo forçado: automático / CONCEITO / FATO / PROCEDIMENTO
+- Nível do aprendiz: iniciante / intermediário / avançado
+- Área/domínio (texto livre)
+
+**Fluxo Principal:**
+1. Usuário acessa `/notebooks/ai-generate` (ou via botão "Gerar com IA")
+2. Seleciona modo (tema livre ou caderno) e provedor
+3. Preenche os parâmetros e clica "Gerar flashcards"
+4. `generateFlashcards()` envia system prompt (Prompt Master) + conteúdo ao provider
+5. Resposta parseada por `parsePromptMasterCards()`
+6. Tela de preview exibe os cartões gerados (US-08)
+7. Usuário aprova, edita ou descarta cada cartão individualmente
+8. "Salvar aprovados" persiste no IndexedDB e enfileira na syncQueue
+
+**Gerar mais (US-07):**
+- Botão "+ Gerar mais" adiciona perguntas já geradas ao contexto de deduplicação
+- Próxima chamada inclui instrução de não repetir as perguntas existentes
+
+**Regras técnicas:**
+- System prompt = Prompt Master (`buildSystemPrompt()`)
+- Limite de conteúdo: ~6.000 tokens (~24.000 chars) com truncamento automático
+- Timeout: 30 segundos; retry manual pelo usuário
+- Chave de API deve estar configurada; erro amigável se ausente
+
+---
+
+#### UC-32 — Preview e Edição de Cartões Gerados pela IA
+**Status:** ✅ Implementado
+
+**Ator:** Estudante  
+**Rota Frontend:** `/notebooks/ai-generate`
+
+**Descrição:** Antes de salvar, o usuário vê todos os cartões gerados em formato expandido com controles inline de aprovação, edição e descarte (US-08).
+
+**Controles por cartão:**
+- Seletor de tipo (dropdown badge) — altera CONCEITO/FATO/PROCEDIMENTO
+- Botão "Editar" → campos editáveis inline: pergunta, resposta, critérios, tags
+- Botão "Descartar / Aprovar" — toggle (descartados ficam com 50% de opacidade)
+
+**Barra inferior fixa:**
+- "X de Y aprovados" + botão "Salvar X aprovados"
+- Cartões descartados não são salvos
+
+---
+
+#### UC-33 — Importação de Flashcards via Arquivo .md
+**Status:** ✅ Implementado
+
+**Ator:** Estudante  
+**Rota Frontend:** `/notebooks/import`  
+**Módulos:** `frontend/src/lib/notebookParser.ts` (`parsePromptMasterCards`)
+
+**Descrição:** O usuário importa um arquivo `.md`, `.txt` ou `.csv` com flashcards nos formatos Prompt Master ou Anki básico. Cartões malformados são sinalizados para revisão antes de salvar (US-14).
+
+**Formatos suportados:**
+- **Prompt Master:** `Tipo: / Q: / A: / Critérios: / Tags:` (mesmo parser da IA)
+- **Anki básico:** `frente;verso` (uma linha por cartão)
+
+**Fluxo:**
+1. Upload de arquivo via input file drag-and-drop
+2. Auto-detecção do formato (presença de `Q:` vs `;`)
+3. Preview dos cartões com badge "Revisar" em cartões malformados (sem Q ou sem A)
+4. Cartões malformados abertos em modo edição por padrão
+5. Aprovação/descarte individual igual ao UC-32
+6. "Importar N cartões" persiste aprovados no IndexedDB + syncQueue
+
+**Nota:** O parser de importação e o parser da IA compartilham a mesma função `parsePromptMasterCards()` — o formato de entrada é idêntico.
+
+---
+
 ## 3. Regras de Negócio
 
 | ID | Regra | Contexto |
@@ -987,6 +1177,32 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 | **RF-56** | O sistema deve permitir edição de nome e avatar com validação de senha (email read-only). | ⚠️ |
 | **RF-57** | O sistema deve oferecer painel de privacidade (LGPD) com exclusão de dados. | ✅ |
 | **RF-58** | O sistema deve suportar exclusão total de conta com remoção de dados em 30 dias. | ✅ |
+
+### 4.10 Ultralearning — Checklist e Tipos
+
+| ID | Requisito | Status |
+|---|---|---|
+| **RF-59** | O sistema deve renderizar `- [ ]` como checkbox interativo desmarcado no verso do cartão. | ✅ |
+| **RF-60** | O sistema deve renderizar `- [x]` como checkbox marcado com texto tachado. | ✅ |
+| **RF-61** | O sistema deve exibir contador "N de Total" e barra de progresso para critérios de checklist. | ✅ |
+| **RF-62** | O sistema deve sugerir nota FSRS automaticamente com base no percentual de critérios marcados. | ✅ |
+| **RF-63** | O sistema deve exibir badge colorido por tipo (CONCEITO/FATO/PROCEDIMENTO) no cartão. | ✅ |
+| **RF-64** | O sistema deve parsear e persistir o campo `Tipo:` do formato Prompt Master nos flashcards. | ✅ |
+
+### 4.11 Ultralearning — Integração com IA
+
+| ID | Requisito | Status |
+|---|---|---|
+| **RF-65** | O sistema deve permitir configurar chave de API (OpenAI/Anthropic) localmente no dispositivo. | ✅ |
+| **RF-66** | O sistema deve nunca transmitir a chave de API para os servidores do Cyanki. | ✅ |
+| **RF-67** | O sistema deve testar a validade da chave com chamada mínima ao provider. | ✅ |
+| **RF-68** | O sistema deve gerar flashcards a partir de conteúdo de caderno via IA. | ✅ |
+| **RF-69** | O sistema deve gerar flashcards a partir de tema livre em linguagem natural. | ✅ |
+| **RF-70** | O sistema deve exibir preview editável de cartões gerados antes de salvar. | ✅ |
+| **RF-71** | O sistema deve suportar "gerar mais" sem repetir perguntas já geradas. | ✅ |
+| **RF-72** | O sistema deve importar flashcards de arquivo `.md` no formato Prompt Master. | ✅ |
+| **RF-73** | O sistema deve importar flashcards no formato Anki básico (`frente;verso`). | ✅ |
+| **RF-74** | O sistema deve sinalizar cartões malformados na importação para revisão obrigatória. | ✅ |
 
 ---
 

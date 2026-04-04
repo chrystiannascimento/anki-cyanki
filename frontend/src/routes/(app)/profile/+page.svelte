@@ -3,6 +3,10 @@
     import { onMount } from 'svelte';
     import { session } from '$lib/authStore';
     import { PUBLIC_API_URL } from '$env/static/public';
+    import {
+        saveApiKey, getApiKey, removeApiKey, hasApiKey, testApiKey,
+        type AIProvider
+    } from '$lib/aiService';
 
     // ─── Avatar color presets ──────────────────────────────────────────────────
     const AVATAR_COLORS = [
@@ -132,6 +136,47 @@
         const perm = await Notification.requestPermission();
         notifPermission = perm;
         localStorage.setItem('cyanki_notifications', perm === 'granted' ? 'true' : 'false');
+    }
+
+    // ─── AI Key Management (US-05) ────────────────────────────────────────────
+    let aiProvider: AIProvider = 'openai';
+    let aiKeyInput = '';
+    let aiKeyStatus: 'idle' | 'testing' | 'ok' | 'error' = 'idle';
+    let aiKeyError = '';
+
+    $: aiKeyStored = browser && hasApiKey(aiProvider);
+
+    function handleProviderChange() {
+        aiKeyInput = '';
+        aiKeyStatus = 'idle';
+        aiKeyError = '';
+    }
+
+    async function saveAiKey() {
+        if (!aiKeyInput.trim()) return;
+        saveApiKey(aiProvider, aiKeyInput.trim());
+        aiKeyInput = '';
+        aiKeyStatus = 'idle';
+        aiKeyStored = true;
+    }
+
+    function removeAiKeyHandler() {
+        removeApiKey(aiProvider);
+        aiKeyInput = '';
+        aiKeyStatus = 'idle';
+        aiKeyStored = false;
+    }
+
+    async function testKey() {
+        aiKeyStatus = 'testing';
+        aiKeyError = '';
+        const result = await testApiKey(aiProvider);
+        if (result.ok) {
+            aiKeyStatus = 'ok';
+        } else {
+            aiKeyStatus = 'error';
+            aiKeyError = result.error ?? 'Erro desconhecido.';
+        }
     }
 
     async function changePassword() {
@@ -456,6 +501,60 @@
                     {/if}
                 </div>
             </div>
+        </section>
+
+        <!-- ── IA — Configuração de Chave de API (US-05) ───────────────────────── -->
+        <section class="p-6 bg-white dark:bg-neutral-800 rounded-2xl shadow-sm ring-1 ring-neutral-200 dark:ring-neutral-700 space-y-5">
+            <div class="border-b border-neutral-100 dark:border-neutral-700 pb-3">
+                <h2 class="text-base font-bold">Inteligência Artificial</h2>
+                <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                    Sua chave é armazenada apenas neste dispositivo — nunca enviada para os servidores do Cyanki.
+                </p>
+            </div>
+
+            <!-- Provider selector -->
+            <div class="flex gap-2">
+                <button
+                    on:click={() => { aiProvider = 'openai'; handleProviderChange(); }}
+                    class="flex-1 py-2 rounded-xl text-sm font-semibold border transition {aiProvider === 'openai' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'}"
+                >OpenAI (GPT-4o)</button>
+                <button
+                    on:click={() => { aiProvider = 'anthropic'; handleProviderChange(); }}
+                    class="flex-1 py-2 rounded-xl text-sm font-semibold border transition {aiProvider === 'anthropic' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'}"
+                >Anthropic (Claude)</button>
+            </div>
+
+            {#if aiKeyStored}
+                <div class="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                    <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <span class="text-sm text-emerald-400 font-medium flex-1">Chave configurada para {aiProvider === 'openai' ? 'OpenAI' : 'Anthropic'}</span>
+                    <button on:click={testKey} disabled={aiKeyStatus === 'testing'} class="text-xs px-3 py-1 rounded-lg border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition disabled:opacity-50">
+                        {aiKeyStatus === 'testing' ? 'Testando...' : 'Testar'}
+                    </button>
+                    <button on:click={removeAiKeyHandler} class="text-xs px-3 py-1 rounded-lg border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 transition">Remover</button>
+                </div>
+
+                {#if aiKeyStatus === 'ok'}
+                    <p class="text-xs text-emerald-400 font-medium">✓ Chave válida e funcionando.</p>
+                {:else if aiKeyStatus === 'error'}
+                    <p class="text-xs text-rose-400">{aiKeyError}</p>
+                {/if}
+            {:else}
+                <div class="flex gap-2">
+                    <input
+                        type="password"
+                        bind:value={aiKeyInput}
+                        placeholder="sk-... ou sk-ant-..."
+                        autocomplete="off"
+                        class="flex-1 px-4 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-900 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <button
+                        on:click={saveAiKey}
+                        disabled={!aiKeyInput.trim()}
+                        class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition disabled:opacity-40"
+                    >Salvar</button>
+                </div>
+            {/if}
         </section>
 
         <!-- ── Link privacidade ──────────────────────────────────────────────── -->

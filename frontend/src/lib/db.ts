@@ -1,11 +1,14 @@
 import Dexie, { type Table } from 'dexie';
 
+export type FlashcardType = 'CONCEITO' | 'FATO' | 'PROCEDIMENTO';
+
 export interface Flashcard {
     id: string; // UUID / NanoID
     front: string;
     back: string;
     tags: string[];
     createdAt: number;
+    type?: FlashcardType; // US-09: Ultralearning card classification
 }
 
 export interface ReviewLog {
@@ -144,6 +147,11 @@ export class CyankiDB extends Dexie {
         // v8: add studyGoals table for study goals and focus timer (UC-13)
         this.version(8).stores({
             studyGoals: 'id, type, period, createdAt'
+        });
+
+        // v9: add type field index to flashcards for Ultralearning classification (US-09/10)
+        this.version(9).stores({
+            flashcards: 'id, *tags, createdAt, type'
         });
     }
 }
