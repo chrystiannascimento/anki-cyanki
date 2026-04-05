@@ -5,6 +5,7 @@
 	import { nanoid } from 'nanoid';
 	import { liveQuery } from 'dexie';
 	import { parseAndInjectNotebookFlashcards } from '$lib/notebookParser';
+	import { markNotebooksDeleted, markFlashcardsDeleted } from '$lib/localDeletions';
 
 	let titleInput = '';
 	let notebooks: Notebook[] = [];
@@ -65,8 +66,18 @@
 	}
 	
 	async function deleteNotebook(id: string) {
+		const nb = await db.notebooks.get(id);
+		const cardIds = nb
+			? (nb.content.match(/<!--id:([a-zA-Z0-9_-]+)-->/g) ?? []).map(m => m.replace(/<!--id:|-->/g, ''))
+			: [];
+		markNotebooksDeleted([id]);
+		if (cardIds.length) markFlashcardsDeleted(cardIds);
 	    await db.notebooks.delete(id);
+		if (cardIds.length) await db.flashcards.bulkDelete(cardIds);
 		await syncEngine.enqueue('DELETE', 'NOTEBOOK', id, {});
+		for (const cardId of cardIds) {
+			await syncEngine.enqueue('DELETE', 'FLASHCARD', cardId, {});
+		}
 	}
 
 	// US-13: Export deck in Obsidian / Prompt Master format

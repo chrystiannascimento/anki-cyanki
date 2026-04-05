@@ -4,6 +4,7 @@
     import { getStorageInfo, pruneOldMedia, clearMediaCache, type StorageInfo } from '$lib/mediaCache';
     import { clearCyankiData } from '$lib/db';
     import { syncEngine } from '$lib/sync';
+    import { markNotebooksDeleted, markFlashcardsDeleted } from '$lib/localDeletions';
 
     // ─── Storage overview ─────────────────────────────────────────────────────
     let storageInfo: StorageInfo | null = null;
@@ -179,6 +180,9 @@
         try {
             const idMatches = nb.content.match(/<!--id:([a-zA-Z0-9_-]+)-->/g) ?? [];
             const cardIds = idMatches.map(m => m.replace(/<!--id:|-->/g, ''));
+            // Tombstone before deleting so pull never re-inserts
+            markNotebooksDeleted([nb.id]);
+            if (cardIds.length) markFlashcardsDeleted(cardIds);
             await db.transaction('rw', db.notebooks, db.flashcards, async () => {
                 await db.notebooks.delete(nb.id);
                 if (cardIds.length) await db.flashcards.bulkDelete(cardIds);
@@ -188,10 +192,58 @@
             for (const cardId of cardIds) {
                 await syncEngine.enqueue('DELETE', 'FLASHCARD', cardId, {});
             }
-            lastAction = `🗑 Caderno "${nb.title}" excluído (${cardIds.length} cards removidos)`;
+            lastAction = `🗑 Caderno "${nb.title}" excluído (${cardIds.length} cards removidos). Sincronização enfileirada.`;
             await refresh();
         } finally {
             isDeletingNotebook = null;
+        }
+    }
+
+    // ─── Orphan flashcards (not referenced by any notebook) ─────────────────
+    let orphanCards: Flashcard[] = [];
+    let isDeletingOrphans = false;
+    let selectedOrphans = new Set<string>();
+
+    $: {
+        if (flashcards.length > 0 && notebooks.length >= 0) {
+            const referenced = new Set<string>();
+            for (const nb of notebooks) {
+                const matches = nb.content.match(/<!--id:([a-zA-Z0-9_-]+)-->/g) ?? [];
+                for (const m of matches) referenced.add(m.replace(/<!--id:|-->/g, ''));
+            }
+            orphanCards = flashcards.filter(fc => !referenced.has(fc.id));
+        } else {
+            orphanCards = [];
+        }
+    }
+
+    function toggleOrphan(id: string) {
+        if (selectedOrphans.has(id)) selectedOrphans.delete(id);
+        else selectedOrphans.add(id);
+        selectedOrphans = new Set(selectedOrphans);
+    }
+
+    function toggleAllOrphans() {
+        if (selectedOrphans.size === orphanCards.length) selectedOrphans = new Set();
+        else selectedOrphans = new Set(orphanCards.map(c => c.id));
+    }
+
+    async function deleteSelectedOrphans() {
+        if (selectedOrphans.size === 0) return;
+        if (!confirm(`Excluir ${selectedOrphans.size} card(s) avulso(s)? Esta ação não pode ser desfeita.`)) return;
+        isDeletingOrphans = true;
+        try {
+            const ids = [...selectedOrphans];
+            markFlashcardsDeleted(ids);
+            await db.flashcards.bulkDelete(ids);
+            for (const id of ids) {
+                await syncEngine.enqueue('DELETE', 'FLASHCARD', id, {});
+            }
+            selectedOrphans = new Set();
+            lastAction = `🗑 ${ids.length} card(s) avulso(s) excluído(s). Sincronização enfileirada.`;
+            await refresh();
+        } finally {
+            isDeletingOrphans = false;
         }
     }
 
@@ -237,6 +289,10 @@
                 db.notebooks.toArray(),
                 db.flashcards.toArray(),
             ]);
+
+            // Tombstone all IDs before wiping so pull can never re-insert them
+            markNotebooksDeleted(allNotebooks.map(n => n.id));
+            markFlashcardsDeleted(allFlashcards.map(f => f.id));
 
             await clearCyankiData();
 
@@ -454,6 +510,57 @@
                             {isExporting === sf.id ? '...' : '⬇ Exportar'}
                         </button>
                     </div>
+                {/each}
+            </div>
+        {/if}
+    </section>
+
+    <!-- ── Orphan flashcards ─────────────────────────────────────────────────── -->
+    <section class="bg-white dark:bg-neutral-800 rounded-2xl ring-1 ring-neutral-200 dark:ring-neutral-700 overflow-hidden">
+        <div class="px-6 py-4 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between gap-4">
+            <div>
+                <h2 class="text-sm font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500">Cards Avulsos</h2>
+                <p class="text-xs text-neutral-400 mt-0.5">Flashcards que não pertencem a nenhum caderno. <a href="/flashcards" class="text-indigo-500 hover:underline">Gerenciar todos os flashcards →</a></p>
+            </div>
+            {#if orphanCards.length > 0}
+                <div class="flex items-center gap-2 shrink-0">
+                    <button on:click={toggleAllOrphans} class="px-3 py-1.5 text-xs font-bold bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600 rounded-lg transition">
+                        {selectedOrphans.size === orphanCards.length ? 'Desmarcar todos' : 'Selecionar todos'}
+                    </button>
+                    {#if selectedOrphans.size > 0}
+                        <button on:click={deleteSelectedOrphans} disabled={isDeletingOrphans} class="px-3 py-1.5 text-xs font-bold bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 rounded-lg transition disabled:opacity-50">
+                            {isDeletingOrphans ? '...' : `🗑 Excluir (${selectedOrphans.size})`}
+                        </button>
+                    {/if}
+                </div>
+            {/if}
+        </div>
+
+        {#if orphanCards.length === 0}
+            <div class="px-6 py-8 text-center text-neutral-400 dark:text-neutral-500 text-sm">Nenhum card avulso encontrado.</div>
+        {:else}
+            <div class="divide-y divide-neutral-100 dark:divide-neutral-700/50 max-h-80 overflow-y-auto">
+                {#each orphanCards as fc (fc.id)}
+                    <label class="px-6 py-3 flex items-start gap-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-700/30 transition">
+                        <input
+                            type="checkbox"
+                            checked={selectedOrphans.has(fc.id)}
+                            on:change={() => toggleOrphan(fc.id)}
+                            class="mt-0.5 w-4 h-4 rounded accent-rose-500 cursor-pointer flex-shrink-0"
+                        />
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold text-neutral-800 dark:text-neutral-200 truncate">{fc.front}</p>
+                            <p class="text-xs text-neutral-400 truncate mt-0.5">{fc.back.slice(0, 80)}{fc.back.length > 80 ? '…' : ''}</p>
+                        </div>
+                        {#if fc.type}
+                            <span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border
+                                {fc.type === 'CONCEITO' ? 'bg-violet-500/10 text-violet-400 border-violet-500/20' :
+                                 fc.type === 'FATO' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}">
+                                {fc.type}
+                            </span>
+                        {/if}
+                    </label>
                 {/each}
             </div>
         {/if}

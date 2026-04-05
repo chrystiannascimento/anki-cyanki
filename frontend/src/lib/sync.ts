@@ -2,6 +2,12 @@ import { db } from './db';
 import { PUBLIC_API_URL } from '$env/static/public';
 import { writable } from 'svelte/store';
 import { markSessionExpired } from './authStore';
+import {
+    getDeletedNotebookIds,
+    getDeletedFlashcardIds,
+    clearDeletedNotebooks,
+    clearDeletedFlashcards
+} from './localDeletions';
 
 export const isSyncingStore = writable(false);
 export const lastSyncedAt = writable<number | null>(null);
@@ -10,7 +16,7 @@ export const syncPendingCount = writable(0);
 export class SyncEngine {
     private isSyncing = false;
 
-    async enqueue(action: 'CREATE' | 'UPDATE' | 'DELETE' | 'REVIEW', entityType: 'FLASHCARD' | 'REVIEW_LOG', entityId: string | number, payload: any) {
+    async enqueue(action: 'CREATE' | 'UPDATE' | 'DELETE' | 'REVIEW', entityType: 'FLASHCARD' | 'NOTEBOOK' | 'REVIEW_LOG', entityId: string | number, payload: any) {
         await db.syncQueue.add({
             action,
             entityType,
@@ -90,6 +96,12 @@ export class SyncEngine {
 
                 // Intelligently UPSERT server data resolving conflicts via Timestamps
                 await db.transaction('rw', db.notebooks, db.flashcards, db.reviewLogs, db.leaderboard, async () => {
+                    // Load tombstones — items the user explicitly deleted locally
+                    const deletedNbIds = getDeletedNotebookIds();
+                    const deletedFcIds = getDeletedFlashcardIds();
+                    const confirmedNbDeletes: string[] = [];
+                    const confirmedFcDeletes: string[] = [];
+
                     if (data.notebooks && data.notebooks.length > 0) {
                         const locals = await db.notebooks.toArray();
                         const localMap = new Map(locals.map(n => [n.id, n]));
@@ -98,14 +110,18 @@ export class SyncEngine {
                         for (const remote of data.notebooks) {
                             if (remote.isDeleted) {
                                 await db.notebooks.delete(remote.id);
+                                confirmedNbDeletes.push(remote.id);
                                 continue;
                             }
+                            // Skip items the user intentionally deleted locally
+                            if (deletedNbIds.has(remote.id)) continue;
                             const local = localMap.get(remote.id);
                             if (!local || remote.updatedAt > local.updatedAt) {
                                 safePuts.push(remote);
                             }
                         }
                         if (safePuts.length > 0) await db.notebooks.bulkPut(safePuts);
+                        if (confirmedNbDeletes.length > 0) clearDeletedNotebooks(confirmedNbDeletes);
                     }
 
                     if (data.flashcards && data.flashcards.length > 0) {
@@ -116,8 +132,11 @@ export class SyncEngine {
                         for (const remote of data.flashcards) {
                             if (remote.isDeleted) {
                                 await db.flashcards.delete(remote.id);
+                                confirmedFcDeletes.push(remote.id);
                                 continue;
                             }
+                            // Skip items the user intentionally deleted locally
+                            if (deletedFcIds.has(remote.id)) continue;
                             const local = localMap.get(remote.id);
                             // Flashcards used fallback createdAt logic for comparisons previously.
                             // Switching over to updatedAt for true remote diff-reconciliation.
@@ -126,6 +145,7 @@ export class SyncEngine {
                             }
                         }
                         if (safePuts.length > 0) await db.flashcards.bulkPut(safePuts);
+                        if (confirmedFcDeletes.length > 0) clearDeletedFlashcards(confirmedFcDeletes);
                     }
 
                     if (data.reviewLogs && data.reviewLogs.length > 0) {
