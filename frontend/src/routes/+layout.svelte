@@ -54,8 +54,8 @@
         if (!hasToken && !isPublicRoute && currentRoute !== '/') {
             // If not logged in and trying to access a protected route, go to login
             goto('/login');
-        } else if (hasToken && (currentRoute === '/login' || currentRoute === '/register')) {
-            // If logged in and on login/register, go to dashboard
+        } else if (hasToken && !$sessionExpired && (currentRoute === '/login' || currentRoute === '/register')) {
+            // If logged in (and session is valid) and on login/register, go to dashboard
             goto('/dashboard');
         }
     }
