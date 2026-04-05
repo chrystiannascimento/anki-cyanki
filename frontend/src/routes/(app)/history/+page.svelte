@@ -145,6 +145,60 @@
         });
     })();
 
+    // ─── US-12: Stats per card type ───────────────────────────────────────────
+    type CardTypeStat = {
+        label: string;
+        type: 'CONCEITO' | 'FATO' | 'PROCEDIMENTO';
+        color: string;
+        badgeClass: string;
+        reviews: number;
+        accuracy: number;
+        activeCards: number;
+        dueCards: number;
+        trend: (number | null)[]; // accuracy per day (last 30)
+    };
+
+    $: typeStats = (() => {
+        const types = [
+            { type: 'CONCEITO' as const,     label: 'Conceito',     color: '#8b5cf6', badgeClass: 'bg-violet-500/20 text-violet-300 border-violet-500/30' },
+            { type: 'FATO' as const,          label: 'Fato',         color: '#f59e0b', badgeClass: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
+            { type: 'PROCEDIMENTO' as const,  label: 'Procedimento', color: '#10b981', badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
+        ];
+
+        return types.map(t => {
+            const typeLogs = filteredLogs.filter(l => cardMap.get(l.flashcardId)?.type === t.type);
+            const typeCardIds = new Set(typeLogs.map(l => l.flashcardId));
+            const acc = typeLogs.length
+                ? Math.round((typeLogs.filter(l => l.grade >= 3).length / typeLogs.length) * 100)
+                : 0;
+
+            // 30-day accuracy trend
+            const trendDays = 30;
+            const trend = Array.from({ length: trendDays }, (_, i) => {
+                const d = new Date();
+                d.setDate(d.getDate() - (trendDays - 1 - i));
+                d.setHours(0, 0, 0, 0);
+                const key = d.toDateString();
+                const dayLogs = typeLogs.filter(l => new Date(l.reviewedAt).toDateString() === key);
+                return dayLogs.length
+                    ? Math.round((dayLogs.filter(l => l.grade >= 3).length / dayLogs.length) * 100)
+                    : null;
+            });
+
+            return {
+                ...t,
+                reviews: typeLogs.length,
+                accuracy: acc,
+                activeCards: typeCardIds.size,
+                dueCards: 0, // computed separately if needed
+                trend
+            } satisfies CardTypeStat;
+        });
+    })();
+
+    // Tab state for US-12
+    let typeTab: 'all' | 'CONCEITO' | 'FATO' | 'PROCEDIMENTO' = 'all';
+
     // ─── Table (paginated, most-recent first) ─────────────────────────────────
     $: tableLogs = filteredLogs; // already sorted desc by reviewedAt
     $: totalTablePages = Math.ceil(tableLogs.length / TABLE_PAGE_SIZE);
@@ -505,6 +559,104 @@
                     </div>
                 {/each}
             </div>
+        </div>
+    {/if}
+
+    <!-- ── US-12: Desempenho por tipo ────────────────────────────────────── -->
+    {#if typeStats.some(t => t.reviews > 0)}
+        <div class="bg-white dark:bg-neutral-800 rounded-2xl ring-1 ring-neutral-200 dark:ring-neutral-700 p-6">
+            <h2 class="text-sm font-black uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-4">Desempenho por Tipo (Ultralearning)</h2>
+
+            <!-- Tabs -->
+            <div class="flex gap-1 p-1 bg-neutral-100 dark:bg-neutral-900 rounded-xl mb-6 w-fit">
+                <button
+                    on:click={() => typeTab = 'all'}
+                    class="px-4 py-1.5 rounded-lg text-sm font-bold transition {typeTab === 'all' ? 'bg-white dark:bg-neutral-700 shadow text-neutral-800 dark:text-white' : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'}"
+                >Geral</button>
+                {#each typeStats as t}
+                    <button
+                        on:click={() => typeTab = t.type}
+                        class="px-4 py-1.5 rounded-lg text-sm font-bold transition {typeTab === t.type ? 'bg-white dark:bg-neutral-700 shadow text-neutral-800 dark:text-white' : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'}"
+                    >{t.label}</button>
+                {/each}
+            </div>
+
+            {#if typeTab === 'all'}
+                <!-- Summary grid: all 3 types side by side -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {#each typeStats as t}
+                        {@const isWorst = t.reviews > 0 && t.accuracy === Math.min(...typeStats.filter(x => x.reviews > 0).map(x => x.accuracy))}
+                        <div class="p-4 rounded-2xl border {t.reviews === 0 ? 'border-neutral-700/50 opacity-50' : isWorst ? 'border-rose-500/30 bg-rose-500/5' : 'border-neutral-700/60'} space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold px-2.5 py-1 rounded-full border {t.badgeClass}">{t.label}</span>
+                                {#if isWorst && t.reviews > 0}
+                                    <span class="text-xs text-rose-400 font-semibold">⚠ Mais fraco</span>
+                                {/if}
+                            </div>
+                            <div class="flex justify-between items-end">
+                                <div>
+                                    <p class="text-2xl font-black {t.accuracy >= 70 ? 'text-emerald-400' : t.accuracy >= 50 ? 'text-amber-400' : 'text-rose-400'}">{t.accuracy}%</p>
+                                    <p class="text-xs text-neutral-500 mt-0.5">taxa de acerto</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-lg font-bold text-neutral-300">{t.reviews}</p>
+                                    <p class="text-xs text-neutral-500">revisões</p>
+                                </div>
+                            </div>
+                            <!-- Mini trend bar (last 30 days) -->
+                            <div class="flex items-end gap-0.5 h-8">
+                                {#each t.trend as val}
+                                    <div class="flex-1 rounded-sm {val === null ? 'bg-neutral-800' : val >= 70 ? 'bg-emerald-500/60' : val >= 50 ? 'bg-amber-500/60' : 'bg-rose-500/60'}" style="height: {val !== null ? Math.max(val, 8) : 4}%"></div>
+                                {/each}
+                            </div>
+                            <p class="text-[10px] text-neutral-600">Evolução 30 dias</p>
+                        </div>
+                    {/each}
+                </div>
+
+            {:else}
+                <!-- Detail view for selected type -->
+                {@const t = typeStats.find(x => x.type === typeTab)!}
+                <div class="space-y-5">
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <div class="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl text-center">
+                            <p class="text-2xl font-black {t.accuracy >= 70 ? 'text-emerald-400' : t.accuracy >= 50 ? 'text-amber-400' : 'text-rose-400'}">{t.accuracy}%</p>
+                            <p class="text-xs text-neutral-500 mt-1">Taxa de acerto</p>
+                        </div>
+                        <div class="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl text-center">
+                            <p class="text-2xl font-black text-indigo-400">{t.reviews}</p>
+                            <p class="text-xs text-neutral-500 mt-1">Revisões</p>
+                        </div>
+                        <div class="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl text-center col-span-2 md:col-span-1">
+                            <p class="text-2xl font-black text-neutral-300">{t.activeCards}</p>
+                            <p class="text-xs text-neutral-500 mt-1">Cards revisados</p>
+                        </div>
+                    </div>
+
+                    <!-- 30-day accuracy trend for this type -->
+                    {#if t.trend.some(v => v !== null)}
+                        <div>
+                            <p class="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-3">Evolução da taxa de acerto — 30 dias</p>
+                            <div class="flex items-end gap-1 h-24">
+                                {#each t.trend as val, i}
+                                    <div class="flex-1 min-w-[6px] group relative flex flex-col items-center justify-end h-full">
+                                        {#if val !== null}
+                                            <div class="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:block z-10 pointer-events-none">
+                                                <div class="bg-neutral-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap shadow">{val}%</div>
+                                            </div>
+                                            <div class="w-full rounded-t {val >= 70 ? 'bg-emerald-400' : val >= 50 ? 'bg-amber-400' : 'bg-rose-400'}" style="height: {val}%"></div>
+                                        {:else}
+                                            <div class="w-full rounded-t bg-neutral-800" style="height: 4px"></div>
+                                        {/if}
+                                    </div>
+                                {/each}
+                            </div>
+                        </div>
+                    {:else}
+                        <p class="text-sm text-neutral-500 italic text-center py-4">Nenhuma revisão de tipo {t.label} no período selecionado.</p>
+                    {/if}
+                </div>
+            {/if}
         </div>
     {/if}
 

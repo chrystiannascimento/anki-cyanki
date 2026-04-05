@@ -4,6 +4,7 @@
 	import { syncEngine } from '$lib/sync';
 	import { nanoid } from 'nanoid';
 	import { liveQuery } from 'dexie';
+	import { parseAndInjectNotebookFlashcards } from '$lib/notebookParser';
 
 	let titleInput = '';
 	let notebooks: Notebook[] = [];
@@ -41,6 +42,44 @@
 	async function deleteNotebook(id: string) {
 	    await db.notebooks.delete(id);
 		await syncEngine.enqueue('DELETE', 'NOTEBOOK', id, {});
+	}
+
+	// US-13: Export deck in Obsidian / Prompt Master format
+	async function exportToObsidian(notebook: Notebook) {
+		// Parse flashcards from the notebook content
+		const { extractedCards } = await parseAndInjectNotebookFlashcards(notebook.content);
+		if (extractedCards.length === 0) {
+			alert('Nenhum flashcard encontrado neste caderno para exportar.');
+			return;
+		}
+
+		// Fetch full cards from DB (to get type and tags)
+		const ids = extractedCards.map(c => c.id);
+		const cards = await db.flashcards.where('id').anyOf(ids).toArray();
+
+		const dateStr = new Date().toISOString().slice(0, 10); // AAAA-MM-DD
+		const safeName = notebook.title.replace(/[^a-z0-9\s-]/gi, '').trim().replace(/\s+/g, '-').toLowerCase();
+		const filename = `deck-${safeName}-${dateStr}.md`;
+
+		// Build Prompt Master format — checkboxes always reset to [ ] on export
+		const blocks = cards.map(card => {
+			// Strip persisted checklist state: replace [x] with [ ]
+			const cleanBack = card.back.replace(/^- \[[xX]\]/gm, '- [ ]');
+
+			const typeLine = card.type ? `Tipo: ${card.type}\n` : '';
+			const tagsLine = card.tags?.length ? `\nTags: ${card.tags.join(', ')}` : '';
+
+			return `${typeLine}Q: ${card.front}\nA: ${cleanBack}${tagsLine}`;
+		});
+
+		const content = blocks.join('\n\n\n');
+		const blob = new Blob([content], { type: 'text/markdown;charset=utf-8;' });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = filename;
+		a.click();
+		URL.revokeObjectURL(url);
 	}
 </script>
 
@@ -83,6 +122,11 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                         Estudar (FSRS)
                    </a>
+                   <!-- US-13: Export to Obsidian -->
+                   <button on:click={() => exportToObsidian(notebook)} title="Exportar para Obsidian (.md)" class="inline-flex items-center justify-center px-3 py-2 bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-white rounded-lg text-sm transition-colors shadow-sm w-full md:w-auto gap-1.5 border border-neutral-200 dark:border-neutral-600">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        .md
+                   </button>
 				</div>
 			</div>
 		{/each}

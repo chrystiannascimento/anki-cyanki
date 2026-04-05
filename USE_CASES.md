@@ -28,7 +28,10 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 - Vídeo-aulas e conteúdo multimídia pesado
 - Pagamentos e assinaturas
 - Moderação de conteúdo comunitário
-- Intervalo FSRS diferenciado por tipo de cartão (US-10) — planejado
+- Intervalo FSRS diferenciado por tipo de cartão (US-10)
+- Modo de estudo "só critérios" — Modo criterioso (US-11)
+- Histórico de desempenho separado por tipo CONCEITO/FATO/PROCEDIMENTO (US-12)
+- Exportação de deck no formato Obsidian/Prompt Master (US-13)
 
 ---
 
@@ -1046,6 +1049,109 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 
 ---
 
+### 2.12 Ultralearning — Intervalo, Modo Criterioso e Exportação
+
+---
+
+#### UC-34 — Multiplicador de Intervalo FSRS por Tipo de Cartão
+**Status:** ✅ Implementado
+
+**Ator:** Sistema  
+**Módulos:** `frontend/src/lib/fsrs.ts` (`processReview`), `frontend/src/lib/checklistRenderer.ts` (`typeMultiplier`)
+
+**Descrição:** Após uma revisão com nota Good ou Easy, o intervalo FSRS calculado pelo algoritmo é ajustado por um multiplicador baseado no tipo do cartão (US-10). Fatos e Procedimentos têm esquecimento mais lento, recebendo intervalo maior.
+
+**Multiplicadores:**
+- `FATO` → × 1.5
+- `PROCEDIMENTO` → × 1.5
+- `CONCEITO` → × 1.0 (padrão, sem alteração)
+- Sem tipo → × 1.0
+
+**Regras técnicas:**
+- Aplicado apenas em `rating >= Good` — Again/Hard mantêm o comportamento padrão
+- `typeMultiplier()` em `checklistRenderer.ts` — fonte única, usada também pela UI
+- O campo `due` do `nextState` é recalculado: `now + (intervalo_original × mult)`
+
+---
+
+#### UC-35 — Modo Criterioso (Critérios-Primeiro)
+**Status:** ✅ Implementado
+
+**Ator:** Estudante  
+**Rota Frontend:** `/practice/study/[id]`, `/notebooks/study/[id]`  
+**Módulos:** `frontend/src/lib/components/StudyCard.svelte`
+
+**Descrição:** Modo de estudo avançado onde o verso é revelado com os critérios em destaque primeiro. A resposta de referência completa fica colapsada, com botão discreto "Ver referência completa" (US-11).
+
+**Comportamento:**
+- Ao revelar o verso: critérios aparecem com prompt "Avalie pelos critérios antes de ver a resposta"
+- Botão toggle "Ver referência completa / Ocultar" expande/colapsa o texto da resposta
+- Em modo normal (padrão): resposta aparece primeiro, critérios depois
+- Badge "Modo criterioso" no canto superior esquerdo do cartão quando ativo
+
+**Configuração:**
+- Toggle no header da sessão (desktop) e abaixo da barra de progresso (mobile)
+- Persiste por deck/caderno em `localStorage` com chave `cyanki_criterious_{id}`
+- Padrão: desativado
+
+---
+
+#### UC-36 — Histórico de Desempenho por Tipo
+**Status:** ✅ Implementado
+
+**Ator:** Estudante  
+**Rota Frontend:** `/history`
+
+**Descrição:** Seção "Desempenho por Tipo (Ultralearning)" na página de histórico, com abas Geral/Conceito/Fato/Procedimento. Exibe taxa de acerto, revisões, cards e trend de 30 dias para cada tipo (US-12).
+
+**Aba Geral:**
+- 3 cards side-by-side (um por tipo) com taxa de acerto, revisões e mini gráfico de barras 30 dias
+- Destaque "⚠ Mais fraco" no tipo com menor taxa de acerto (entre os com revisões)
+
+**Aba de tipo específico:**
+- KPIs: taxa de acerto, revisões, cards revisados
+- Gráfico de barras 30 dias com tooltip percentual por dia
+- Mensagem quando não há revisões do tipo no período
+
+**Regras:**
+- Seção só aparece quando há revisões de cards com `type` definido no período
+- Filtros de período e tag já aplicados afetam os dados de tipo também
+
+---
+
+#### UC-37 — Exportar Deck no Formato Obsidian / Prompt Master
+**Status:** ✅ Implementado
+
+**Ator:** Estudante  
+**Rota Frontend:** `/notebooks`  
+**Botão:** ícone `.md` em cada card de caderno
+
+**Descrição:** Botão em cada caderno na lista que exporta todos os flashcards do caderno como arquivo `.md` no formato Prompt Master, pronto para importar no Obsidian (US-13).
+
+**Formato de saída:**
+```
+Tipo: CONCEITO
+Q: O que é X?
+A: X é...
+
+Critérios:
+- [ ] critério 1
+- [ ] critério 2
+Tags: tag1, tag2
+
+
+Tipo: FATO
+Q: ...
+```
+
+**Regras:**
+- Checkboxes exportados sempre como `- [ ]` — estado marcado/desmarcado não persiste
+- Cada flashcard separado por linha em branco dupla
+- Nome do arquivo: `deck-{título-slugificado}-AAAA-MM-DD.md`
+- Caderno sem flashcards exibe `alert()` informativo
+
+---
+
 ## 3. Regras de Negócio
 
 | ID | Regra | Contexto |
@@ -1178,7 +1284,20 @@ O **Cyanki** é uma plataforma de estudos adaptativa, offline-first, baseada em 
 | **RF-57** | O sistema deve oferecer painel de privacidade (LGPD) com exclusão de dados. | ✅ |
 | **RF-58** | O sistema deve suportar exclusão total de conta com remoção de dados em 30 dias. | ✅ |
 
-### 4.10 Ultralearning — Checklist e Tipos
+### 4.10 Ultralearning — Intervalo, Modo de Estudo e Exportação
+
+| ID | Requisito | Status |
+|---|---|---|
+| **RF-75** | O sistema deve aplicar multiplicador de intervalo FSRS por tipo de cartão (FATO/PROCEDIMENTO × 1.5, CONCEITO × 1.0) em avaliações Good/Easy. | ✅ |
+| **RF-76** | O sistema deve oferecer Modo criterioso nas sessões FSRS: critérios aparecem primeiro, resposta completa colapsada. | ✅ |
+| **RF-77** | O modo criterioso deve ser configurável por deck/caderno (persiste em localStorage). | ✅ |
+| **RF-78** | O sistema deve exibir estatísticas de desempenho separadas por tipo (taxa de acerto, revisões, trend 30 dias) na página de histórico. | ✅ |
+| **RF-79** | O sistema deve destacar visualmente o tipo com pior desempenho relativo. | ✅ |
+| **RF-80** | O sistema deve exportar flashcards de um caderno como arquivo `.md` no formato Prompt Master. | ✅ |
+| **RF-81** | O arquivo exportado deve ter checkboxes sempre no estado `[ ]` (estado de revisão não exporta). | ✅ |
+| **RF-82** | O arquivo exportado deve ser nomeado `deck-{título}-AAAA-MM-DD.md`. | ✅ |
+
+### 4.11 Ultralearning — Checklist e Tipos
 
 | ID | Requisito | Status |
 |---|---|---|
