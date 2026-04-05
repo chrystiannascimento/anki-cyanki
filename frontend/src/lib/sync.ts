@@ -4,6 +4,8 @@ import { writable } from 'svelte/store';
 import { markSessionExpired } from './authStore';
 
 export const isSyncingStore = writable(false);
+export const lastSyncedAt = writable<number | null>(null);
+export const syncPendingCount = writable(0);
 
 export class SyncEngine {
     private isSyncing = false;
@@ -16,6 +18,9 @@ export class SyncEngine {
             payload,
             createdAt: Date.now()
         });
+
+        const count = await db.syncQueue.count();
+        syncPendingCount.set(count);
 
         this.triggerSync();
     }
@@ -61,6 +66,9 @@ export class SyncEngine {
         } finally {
             this.isSyncing = false;
             isSyncingStore.set(false);
+            const remaining = await db.syncQueue.count();
+            syncPendingCount.set(remaining);
+            if (remaining === 0) lastSyncedAt.set(Date.now());
         }
     }
 

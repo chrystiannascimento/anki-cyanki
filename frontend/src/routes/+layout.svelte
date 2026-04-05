@@ -4,7 +4,7 @@
     import { page } from '$app/stores';
     import { goto } from '$app/navigation';
     import { session, sessionExpired } from '$lib/authStore';
-    import { syncEngine, isSyncingStore } from '$lib/sync';
+    import { syncEngine, isSyncingStore, lastSyncedAt, syncPendingCount } from '$lib/sync';
     import { themeStore, toggleTheme } from '$lib/theme';
 
     let mounted = false;
@@ -100,12 +100,30 @@
 </button>
 
 <!-- Global Sync Indicator -->
-{#if $isSyncingStore}
-    <div class="fixed bottom-4 right-4 z-50 flex items-center gap-2 bg-neutral-900 dark:bg-neutral-800 text-white text-xs font-semibold px-4 py-2 rounded-full shadow-lg border border-neutral-700 pointer-events-none transition-all duration-300 transform translate-y-0 opacity-100">
-        <svg class="animate-spin h-3.5 w-3.5 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        Syncing...
+{#if mounted && $session.token && !$sessionExpired}
+    <div class="fixed bottom-20 right-4 z-50 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg border transition-all duration-300
+        {$isSyncingStore
+            ? 'bg-neutral-900 dark:bg-neutral-800 border-neutral-700 text-indigo-300'
+            : $syncPendingCount > 0
+                ? 'bg-amber-500/10 border-amber-500/40 text-amber-500 dark:text-amber-400'
+                : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'}"
+    >
+        {#if $isSyncingStore}
+            <svg class="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            Sincronizando...
+        {:else if $syncPendingCount > 0}
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            {$syncPendingCount} pendente{$syncPendingCount > 1 ? 's' : ''}
+        {:else}
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+            </svg>
+            Sincronizado
+        {/if}
     </div>
 {/if}
