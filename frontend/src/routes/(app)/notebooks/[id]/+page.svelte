@@ -27,6 +27,7 @@
 	let sessionFlashcards: ParsedCard[] = [];
 	let parseToast: { updated: number; created: number } | null = null;
 	let parseToastTimer: ReturnType<typeof setTimeout>;
+	let isForceReparsing = false;
 
 	// ─── UC-16: Performance indicators ────────────────────────────────────────
 	let parseMode: 'worker' | 'incremental' | 'sync' = 'sync';
@@ -276,6 +277,27 @@
 		}, 1000);
 	}
 
+	// ─── Force re-parse (bypasses block cache, uses full sync parser) ──────────
+	async function forceReparse() {
+		if (!notebook || isForceReparsing) return;
+		isForceReparsing = true;
+		// Clear caches so everything is re-processed from scratch
+		blockCache.clear();
+		previousBlocks = [];
+		try {
+			const parsed = await syncParseAndResolve(content);
+			sessionFlashcards = parsed.extractedCards;
+			if (parsed.hasNewInjections) {
+				content = parsed.updatedMarkdown;
+				renderMarkdown(content);
+				await db.notebooks.update(notebookId, { content, updatedAt: Date.now() });
+			}
+			await persistCards(parsed.extractedCards, true);
+		} finally {
+			isForceReparsing = false;
+		}
+	}
+
 	// ─── Helpers ───────────────────────────────────────────────────────────────
 	function renderMarkdown(md: string) {
 		const cleanMd = md.replace(/<!--\s*id:\s*[\w-]+\s*-->/g, '');
@@ -420,6 +442,27 @@
 		? sessionFlashcards
 		: sessionFlashcards.filter((_, i) => matchedIndices!.has(i));
 
+	function typeBadge(type?: string): { label: string; cls: string } | null {
+		if (type === 'CONCEITO') return { label: 'Conceito', cls: 'bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300' };
+		if (type === 'FATO')     return { label: 'Fato',     cls: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300' };
+		if (type === 'PROCEDIMENTO') return { label: 'Procedimento', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300' };
+		return null;
+	}
+
+	/** Split back into answer text + criteria lines (mirrors checklistRenderer logic) */
+	function splitBack(back: string): { answer: string; criteria: string[] } {
+		const headerRe = /^Crit[eé]rios?:\s*\r?\n([\s\S]+)$/im;
+		const m = back.match(headerRe);
+		if (m && m.index !== undefined) {
+			const answer = back.slice(0, m.index).trim();
+			const criteria = m[1].split('\n')
+				.map(l => l.replace(/^- \[[ xX]\] /, '').trim())
+				.filter(Boolean);
+			return { answer, criteria };
+		}
+		return { answer: back, criteria: [] };
+	}
+
 	function escapeHtml(s: string): string {
 		return s
 			.replace(/&/g, '&amp;')
@@ -543,6 +586,23 @@
 				<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
 				Gerar com IA
 			</a>
+
+			<!-- Force re-parse button -->
+			<button
+				on:click={forceReparse}
+				disabled={isForceReparsing}
+				title="Forçar re-parse e salvar todos os cards no banco"
+				class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors disabled:opacity-50
+					{isForceReparsing ? 'border-indigo-500 text-indigo-400 bg-indigo-500/10' : 'border-neutral-300 dark:border-neutral-600 text-neutral-500 dark:text-neutral-400 hover:border-indigo-500 hover:text-indigo-500'}"
+			>
+				{#if isForceReparsing}
+					<svg class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+					Sincronizando...
+				{:else}
+					<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+					Forçar sync
+				{/if}
+			</button>
 
 			<div class="text-sm font-medium text-neutral-400">
 				{#if isSaving}
@@ -680,12 +740,19 @@
 
 						<div class="max-w-3xl mx-auto px-8 py-4">
 							{#each visibleCards as card, vi (card.id)}
+								{@const badge = typeBadge(card.type)}
+								{@const split = splitBack(card.back)}
 								<div class="bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl p-5 shadow-sm mb-4 transition-shadow hover:shadow-md">
 									<div class="flex items-start justify-between gap-2 mb-2">
-										<!-- UC-19: highlighted front text -->
-										<h3 class="font-bold text-neutral-800 dark:text-neutral-200">
-											{@html highlightText(card.front, searchQuery)}
-										</h3>
+										<div class="flex items-center gap-2 flex-wrap">
+											{#if badge}
+												<span class="text-[10px] font-bold px-2 py-0.5 rounded-full {badge.cls}">{badge.label}</span>
+											{/if}
+											<!-- UC-19: highlighted front text -->
+											<h3 class="font-bold text-neutral-800 dark:text-neutral-200">
+												{@html highlightText(card.front, searchQuery)}
+											</h3>
+										</div>
 										<div class="flex items-center gap-1.5 shrink-0">
 											<!-- UC-19: jump to position in editor -->
 											{#if searchVisible}
@@ -706,10 +773,24 @@
 											{/if}
 										</div>
 									</div>
-									<!-- UC-19: highlighted back text -->
+									<!-- Answer text (before criteria) -->
 									<p class="text-neutral-600 dark:text-neutral-400 text-sm whitespace-pre-wrap">
-										{@html highlightText(card.back, searchQuery)}
+										{@html highlightText(split.answer, searchQuery)}
 									</p>
+									<!-- Criteria block -->
+									{#if split.criteria.length > 0}
+										<div class="mt-3 border-t border-neutral-200 dark:border-neutral-800 pt-3">
+											<p class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-2">Critérios</p>
+											<ul class="space-y-1">
+												{#each split.criteria as c}
+													<li class="flex items-start gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+														<span class="mt-0.5 w-3.5 h-3.5 shrink-0 rounded border border-neutral-300 dark:border-neutral-600 inline-block"></span>
+														{c}
+													</li>
+												{/each}
+											</ul>
+										</div>
+									{/if}
 									{#if card.tags && card.tags.length > 0}
 										<div class="mt-4 flex flex-wrap gap-2">
 											{#each card.tags as tag}

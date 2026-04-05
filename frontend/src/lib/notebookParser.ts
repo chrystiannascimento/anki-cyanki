@@ -124,51 +124,40 @@ export async function parseAndInjectNotebookFlashcards(markdown: string) {
         cardDictionary.set(card.front.trim().toLowerCase(), card);
     }
 
-    // Use a multiline regex to capture everything from Q: until the next Q: or End Of File
-    // Captures ID in match[1], Front in match[2], Back in match[3], and Tags in match[4]
-    // Optionally captures Tipo: prefix (match[5]) for Ultralearning card type
-    const flashcardRegex = /^(?:Tipo:\s*(CONCEITO|FATO|PROCEDIMENTO)\s*\r?\n)?^Q:\s*(?:<!--\s*id:\s*([\w-]+)\s*-->\s*)?([^\n]+)\r?\n^A:\s*([\s\S]+?)(?:\r?\n^Tags:\s*([^\n]+))?(?=\r?\n^(?:Tipo:|Q:)|$)/gm;
+    // Split markdown into blocks on card boundaries (Tipo:? + Q:).
+    // Each block is parsed individually so the regex has no `m` flag and
+    // $ anchors to the end of the block — preventing the lazy [\s\S]+?
+    // from stopping at the first line-end and truncating Critérios blocks.
+    const blockSplitRe = /(?=^(?:Tipo:\s+\S[^\n]*\n)?Q:\s)/m;
+    const blocks = markdown.split(blockSplitRe);
 
-    // Find all matches iteratively to reconstruct the string accurately
-    let match;
-    let lastIndex = 0;
+    // Per-block regex — NO `m` flag, so ^ and $ anchor to block boundaries.
+    const cardRe = /^(?:Tipo:\s*(CONCEITO|FATO|PROCEDIMENTO)[ \t]*\n)?Q:\s*(?:<!--\s*id:\s*([\w-]+)\s*-->\s*)?([^\n]+)\r?\nA:\s*([\s\S]+?)(?:\r?\nTags:\s*([^\n]+))?\s*$/;
 
-    // We must reset the regex index
-    flashcardRegex.lastIndex = 0;
+    for (const block of blocks) {
+        const match = cardRe.exec(block);
+        if (!match) {
+            updatedMarkdown += block;
+            continue;
+        }
 
-    while ((match = flashcardRegex.exec(markdown)) !== null) {
-        // match[0] = whole block
-        // match[1] = Tipo (optional, new)
-        // match[2] = ID comment (optional)
-        // match[3] = front (Q:)
-        // match[4] = back (A:)
-        // match[5] = tags (optional)
-        const fullMatch = match[0];
         const cardType = match[1] ? match[1].toUpperCase() as FlashcardType : undefined;
         let cardId = match[2];
-
         const frontText = match[3].trim();
-        let backText = match[4].trim();
-        let tagsArray: string[] = [];
-
-        const tagsString = match[5];
-        if (tagsString) {
-            tagsArray = tagsString.split(/[,|;|\s]+/).filter((t: string) => t.trim() !== '');
-        }
+        const backText = match[4].trim();
+        const tagsArray = match[5]
+            ? match[5].split(/[,|;\s]+/).filter((t: string) => t.trim() !== '')
+            : [];
 
         let injected = false;
 
         if (!cardId) {
-            // Deduplication Strategy: Test if this newly typed Question already fundamentally exists
             const normalizedFront = frontText.toLowerCase();
             const collisionCard = cardDictionary.get(normalizedFront);
 
-            // If the front matches, and the back is also an exact match (ignoring spaces), it's a true Duplication
             if (collisionCard && collisionCard.back.trim() === backText) {
-                // Do NOT generate a new ID. Re-use the existing card's ID invisibly.
                 cardId = collisionCard.id;
             } else {
-                // Truly unique new card
                 cardId = nanoid();
             }
 
@@ -185,22 +174,10 @@ export async function parseAndInjectNotebookFlashcards(markdown: string) {
             createdAt: Date.now()
         });
 
-        // Push the leading unconverted text
-        updatedMarkdown += markdown.slice(lastIndex, match.index);
-
-        if (injected) {
-            // Rebuild the match with the ID injected, safely preserving spacing and Tags text
-            updatedMarkdown += fullMatch.replace(/^Q:\s*/, `Q: <!-- id: ${cardId} --> `);
-        } else {
-            // Keep unchanged match
-            updatedMarkdown += fullMatch;
-        }
-
-        lastIndex = flashcardRegex.lastIndex;
+        updatedMarkdown += injected
+            ? block.replace(/^Q:\s*/m, `Q: <!-- id: ${cardId} --> `)
+            : block;
     }
-
-    // Append the tail end of the markdown
-    updatedMarkdown += markdown.slice(lastIndex);
 
     // Update existing cards or create new ones in the Database
     for (const card of extractedCards) {

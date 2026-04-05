@@ -19,6 +19,7 @@ export interface ParsedCard {
     front: string;
     back: string;
     tags: string[];
+    type?: string;
     createdAt: number;
 }
 
@@ -37,15 +38,18 @@ interface BlockParseResult {
  * We keep the split boundaries so we can reconstruct the full markdown.
  */
 export function splitIntoBlocks(markdown: string): string[] {
-    // Split on every occurrence of a Q: that starts a line, keeping the delimiter
-    const parts = markdown.split(/(?=^Q:\s)/m);
+    // Split before each card block — optionally preceded by a "Tipo: ..." line
+    const parts = markdown.split(/(?=^(?:Tipo:\s+\S+[ \t]*\n)?Q:\s)/m);
     return parts;
 }
 
 // ─── Single-block parsing ─────────────────────────────────────────────────────
 
+// No `m` flag — ^ and $ anchor to start/end of block string, not per-line.
+// This prevents `$` from matching end-of-first-line, which would truncate
+// multi-line back content (criteria blocks, etc.).
 const QA_REGEX =
-    /^Q:\s*(?:<!--\s*id:\s*([\w-]+)\s*-->\s*)?([^\n]+)\r?\n^A:\s*([\s\S]+?)(?:\r?\n^Tags:\s*([^\n]+))?$/m;
+    /^(?:Tipo:\s*(CONCEITO|FATO|PROCEDIMENTO)[ \t]*\n)?Q:\s*(?:<!--\s*id:\s*([\w-]+)\s*-->\s*)?([^\n]+)\r?\nA:\s*([\s\S]+?)(?:\r?\nTags:\s*([^\n]+))?\s*$/;
 
 function parseBlock(
     block: string,
@@ -57,11 +61,12 @@ function parseBlock(
         return { blockText: block, cards: [], hasNewInjections: false };
     }
 
-    let cardId = match[1];
-    const frontText = match[2].trim();
-    const backText = match[3].trim();
-    const tagsArray = match[4]
-        ? match[4].split(/[,|;\s]+/).filter((t: string) => t.trim() !== '')
+    const cardType = match[1] ? (match[1].toUpperCase() as string) : undefined;
+    let cardId = match[2];
+    const frontText = match[3].trim();
+    const backText = match[4].trim();
+    const tagsArray = match[5]
+        ? match[5].split(/[,|;\s]+/).filter((t: string) => t.trim() !== '')
         : [];
 
     let injected = false;
@@ -76,6 +81,7 @@ function parseBlock(
         front: frontText,
         back: backText,
         tags: tagsArray,
+        type: cardType,
         createdAt: Date.now()
     };
 

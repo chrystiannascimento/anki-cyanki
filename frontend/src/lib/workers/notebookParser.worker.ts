@@ -26,6 +26,7 @@ export interface ParsedCard {
     front: string;
     back: string;
     tags: string[];
+    type?: string;
     createdAt: number;
 }
 
@@ -36,7 +37,7 @@ export interface ParseResponse {
     hasNewInjections: boolean;
 }
 
-// ─── Core parsing logic (mirrored from notebookParser.ts) ────────────────────
+// ─── Core parsing logic ────────────────────────────────────────────────────────
 
 function parseMarkdown(
     markdown: string,
@@ -46,30 +47,36 @@ function parseMarkdown(
     const extractedCards: ParsedCard[] = [];
     let hasNewInjections = false;
 
-    const flashcardRegex =
-        /^Q:\s*(?:<!--\s*id:\s*([\w-]+)\s*-->\s*)?([^\n]+)\r?\n^A:\s*([\s\S]+?)(?:\r?\n^Tags:\s*([^\n]+))?(?=\r?\n^Q:|$)/gm;
+    // Split on card boundaries (optionally preceded by Tipo: line).
+    // Each segment is either prose or a full card block (Tipo? + Q + A + Critérios? + Tags?).
+    const blockSplitRe = /(?=^(?:Tipo:\s+\S[^\n]*\n)?Q:\s)/m;
+    const blocks = markdown.split(blockSplitRe);
 
-    let match: RegExpExecArray | null;
-    let lastIndex = 0;
-    flashcardRegex.lastIndex = 0;
+    // Regex for a single card block — NO `m` flag so ^ and $ anchor to block
+    // start/end, preventing $ from matching end-of-first-line and truncating
+    // multi-line back content (Critérios blocks, etc.).
+    const cardRe =
+        /^(?:Tipo:\s*(CONCEITO|FATO|PROCEDIMENTO)[ \t]*\n)?Q:\s*(?:<!--\s*id:\s*([\w-]+)\s*-->\s*)?([^\n]+)\r?\nA:\s*([\s\S]+?)(?:\r?\nTags:\s*([^\n]+))?\s*$/;
 
-    while ((match = flashcardRegex.exec(markdown)) !== null) {
-        const fullMatch = match[0];
-        let cardId = match[1];
-        const frontText = match[2].trim();
-        const backText = match[3].trim();
-
-        let tagsArray: string[] = [];
-        if (match[4]) {
-            tagsArray = match[4].split(/[,|;\s]+/).filter((t: string) => t.trim() !== '');
+    for (const block of blocks) {
+        const match = cardRe.exec(block);
+        if (!match) {
+            updatedMarkdown += block;
+            continue;
         }
 
-        let injected = false;
+        const cardType = match[1] ? match[1].toUpperCase() : undefined;
+        let cardId = match[2];
+        const frontText = match[3].trim();
+        const backText = match[4].trim();
+        const tagsArray = match[5]
+            ? match[5].split(/[,|;\s]+/).filter((t: string) => t.trim() !== '')
+            : [];
 
+        let injected = false;
         if (!cardId) {
             const normalizedFront = frontText.toLowerCase();
-            const existingId = cardDictionary.get(normalizedFront);
-            cardId = existingId ?? nanoid();
+            cardId = cardDictionary.get(normalizedFront) ?? nanoid();
             hasNewInjections = true;
             injected = true;
         }
@@ -79,18 +86,14 @@ function parseMarkdown(
             front: frontText,
             back: backText,
             tags: tagsArray,
+            type: cardType,
             createdAt: Date.now()
         });
 
-        updatedMarkdown += markdown.slice(lastIndex, match.index);
         updatedMarkdown += injected
-            ? fullMatch.replace(/^Q:\s*/, `Q: <!-- id: ${cardId} --> `)
-            : fullMatch;
-
-        lastIndex = flashcardRegex.lastIndex;
+            ? block.replace(/^Q:\s*/m, `Q: <!-- id: ${cardId} --> `)
+            : block;
     }
-
-    updatedMarkdown += markdown.slice(lastIndex);
 
     return { updatedMarkdown, extractedCards, hasNewInjections };
 }
