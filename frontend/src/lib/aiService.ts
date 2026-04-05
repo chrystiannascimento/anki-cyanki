@@ -11,7 +11,7 @@
 
 import { parsePromptMasterCards, type ParsedPromptCard } from '$lib/notebookParser';
 
-export type AIProvider = 'openai' | 'anthropic';
+export type AIProvider = 'openai' | 'anthropic' | 'gemini';
 
 // ─── Key management ─────────────────────────────────────────────────────────
 
@@ -78,6 +78,23 @@ export async function testApiKey(provider: AIProvider): Promise<{ ok: boolean; e
             return { ok: res.ok };
         }
 
+        if (provider === 'gemini') {
+            const res = await fetchWithTimeout(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: 'ping' }] }] })
+                }
+            );
+            if (res.status === 400 || res.status === 401 || res.status === 403) {
+                const body = await res.json().catch(() => ({}));
+                const msg = body?.error?.message ?? 'Chave inválida ou sem permissão.';
+                return { ok: false, error: msg };
+            }
+            return { ok: res.ok };
+        }
+
         return { ok: false, error: 'Provedor desconhecido.' };
     } catch (e: any) {
         return { ok: false, error: e.message ?? 'Erro de conexão.' };
@@ -134,8 +151,10 @@ export async function generateFlashcards(params: GenerationParams): Promise<Pars
 
     if (provider === 'openai') {
         rawText = await callOpenAI(key, systemPrompt, userMessage);
-    } else {
+    } else if (provider === 'anthropic') {
         rawText = await callAnthropic(key, systemPrompt, userMessage);
+    } else {
+        rawText = await callGemini(key, systemPrompt, userMessage);
     }
 
     const cards = parsePromptMasterCards(rawText);
@@ -254,6 +273,28 @@ async function callAnthropic(key: string, system: string, user: string): Promise
 
     const json = await res.json();
     return json.content?.[0]?.text ?? '';
+}
+
+async function callGemini(key: string, system: string, user: string): Promise<string> {
+    const res = await fetchWithTimeout(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                system_instruction: { parts: [{ text: system }] },
+                contents: [{ parts: [{ text: user }] }],
+                generationConfig: { temperature: 0.7 }
+            })
+        },
+        30_000
+    );
+
+    if (res.status === 400 || res.status === 403) throw new Error('Chave Gemini inválida ou sem permissão.');
+    if (!res.ok) throw new Error(`Erro Gemini: ${res.status} ${res.statusText}`);
+
+    const json = await res.json();
+    return json.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 }
 
 function fetchWithTimeout(url: string, init: RequestInit, ms = 30_000): Promise<Response> {

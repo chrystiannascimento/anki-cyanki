@@ -56,7 +56,8 @@
 
     onMount(async () => {
         // Pick the stored provider (if set)
-        if (hasApiKey('anthropic') && !hasApiKey('openai')) provider = 'anthropic';
+        if (hasApiKey('anthropic') && !hasApiKey('openai') && !hasApiKey('gemini')) provider = 'anthropic';
+        else if (hasApiKey('gemini') && !hasApiKey('openai') && !hasApiKey('anthropic')) provider = 'gemini';
 
         if (notebookId) {
             const nb = await db.notebooks.get(notebookId);
@@ -220,7 +221,7 @@
                 <!-- Provider selector -->
                 <div class="space-y-2">
                     <label class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Modelo de IA</label>
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 flex-wrap">
                         <button on:click={() => provider = 'openai'}
                             class="flex-1 py-2 rounded-xl text-sm font-medium border transition {provider === 'openai' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300' : 'border-neutral-700 text-neutral-400 hover:border-neutral-500'}">
                             GPT-4o
@@ -229,10 +230,14 @@
                             class="flex-1 py-2 rounded-xl text-sm font-medium border transition {provider === 'anthropic' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300' : 'border-neutral-700 text-neutral-400 hover:border-neutral-500'}">
                             Claude Sonnet
                         </button>
+                        <button on:click={() => provider = 'gemini'}
+                            class="flex-1 py-2 rounded-xl text-sm font-medium border transition {provider === 'gemini' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300' : 'border-neutral-700 text-neutral-400 hover:border-neutral-500'}">
+                            Gemini 2.0
+                        </button>
                     </div>
                     {#if !hasApiConfigured}
                         <p class="text-xs text-amber-400">
-                            Nenhuma chave configurada para {provider === 'openai' ? 'OpenAI' : 'Anthropic'}.
+                            Nenhuma chave configurada para {provider === 'openai' ? 'OpenAI' : provider === 'anthropic' ? 'Anthropic' : 'Google Gemini'}.
                             <a href="/profile" class="underline">Configurar em Perfil →</a>
                         </p>
                     {/if}

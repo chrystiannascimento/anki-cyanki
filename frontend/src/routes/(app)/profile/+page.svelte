@@ -513,7 +513,7 @@
             </div>
 
             <!-- Provider selector -->
-            <div class="flex gap-2">
+            <div class="flex gap-2 flex-wrap">
                 <button
                     on:click={() => { aiProvider = 'openai'; handleProviderChange(); }}
                     class="flex-1 py-2 rounded-xl text-sm font-semibold border transition {aiProvider === 'openai' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'}"
@@ -522,12 +522,16 @@
                     on:click={() => { aiProvider = 'anthropic'; handleProviderChange(); }}
                     class="flex-1 py-2 rounded-xl text-sm font-semibold border transition {aiProvider === 'anthropic' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'}"
                 >Anthropic (Claude)</button>
+                <button
+                    on:click={() => { aiProvider = 'gemini'; handleProviderChange(); }}
+                    class="flex-1 py-2 rounded-xl text-sm font-semibold border transition {aiProvider === 'gemini' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'}"
+                >Google (Gemini)</button>
             </div>
 
             {#if aiKeyStored}
                 <div class="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                     <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                    <span class="text-sm text-emerald-400 font-medium flex-1">Chave configurada para {aiProvider === 'openai' ? 'OpenAI' : 'Anthropic'}</span>
+                    <span class="text-sm text-emerald-400 font-medium flex-1">Chave configurada para {aiProvider === 'openai' ? 'OpenAI' : aiProvider === 'anthropic' ? 'Anthropic' : 'Google Gemini'}</span>
                     <button on:click={testKey} disabled={aiKeyStatus === 'testing'} class="text-xs px-3 py-1 rounded-lg border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition disabled:opacity-50">
                         {aiKeyStatus === 'testing' ? 'Testando...' : 'Testar'}
                     </button>
