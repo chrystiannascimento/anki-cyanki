@@ -144,6 +144,7 @@
             return { label: d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }), acc };
         });
     })();
+    $: step2 = accuracyTrend.length > 14 ? Math.ceil(accuracyTrend.length / 7) : 1;
 
     // ─── US-12: Stats per card type ───────────────────────────────────────────
     type CardTypeStat = {
@@ -528,7 +529,6 @@
                     </div>
                 {/each}
             </div>
-            {@const step2 = accuracyTrend.length > 14 ? Math.ceil(accuracyTrend.length / 7) : 1}
             <div class="flex gap-1 mt-1">
                 {#each accuracyTrend as point, i}
                     <div class="flex-1 min-w-[28px] text-center text-[10px] text-neutral-400 overflow-hidden">
