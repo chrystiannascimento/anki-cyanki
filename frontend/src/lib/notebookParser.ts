@@ -208,7 +208,8 @@ export async function parseAndInjectNotebookFlashcards(markdown: string) {
         if (existing) {
             const hasChanged = existing.front !== card.front ||
                 existing.back !== card.back ||
-                (existing.tags || []).join() !== (card.tags || []).join();
+                (existing.tags || []).join() !== (card.tags || []).join() ||
+                existing.type !== card.type;
 
             if (hasChanged) {
                 await db.flashcards.update(card.id, {

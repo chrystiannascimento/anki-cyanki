@@ -25,6 +25,8 @@
 	let isSaving = false;
 	let viewMode: 'markdown' | 'flashcards' = 'markdown';
 	let sessionFlashcards: ParsedCard[] = [];
+	let parseToast: { updated: number; created: number } | null = null;
+	let parseToastTimer: ReturnType<typeof setTimeout>;
 
 	// ─── UC-16: Performance indicators ────────────────────────────────────────
 	let parseMode: 'worker' | 'incremental' | 'sync' = 'sync';
@@ -164,29 +166,41 @@
 	 * Persist parsed cards to Dexie (create/update) and enqueue sync operations.
 	 * This always runs on the main thread regardless of the parse path taken.
 	 */
-	async function persistCards(cards: ParsedCard[]) {
+	async function persistCards(cards: ParsedCard[], showToast = false) {
+		let updated = 0;
+		let created = 0;
+
 		for (const card of cards) {
 			const existing = await db.flashcards.get(card.id);
 			if (existing) {
 				const hasChanged =
 					existing.front !== card.front ||
 					existing.back !== card.back ||
-					(existing.tags ?? []).join() !== (card.tags ?? []).join();
+					(existing.tags ?? []).join() !== (card.tags ?? []).join() ||
+					existing.type !== card.type;
 				if (hasChanged) {
 					await db.flashcards.update(card.id, {
 						front: card.front,
 						back: card.back,
-						tags: card.tags
+						tags: card.tags,
+						type: card.type
 					});
 					await syncEngine.enqueue('UPDATE', 'FLASHCARD', card.id, card);
-					// Update dictionary so future incremental passes don't re-inject
 					cardDictionary.set(card.front.toLowerCase(), card.id);
+					updated++;
 				}
 			} else {
 				await db.flashcards.add(card as Flashcard);
 				await syncEngine.enqueue('CREATE', 'FLASHCARD', card.id, card);
 				cardDictionary.set(card.front.toLowerCase(), card.id);
+				created++;
 			}
+		}
+
+		if (showToast && (updated > 0 || created > 0)) {
+			clearTimeout(parseToastTimer);
+			parseToast = { updated, created };
+			parseToastTimer = setTimeout(() => { parseToast = null; }, 4000);
 		}
 	}
 
@@ -218,12 +232,13 @@
 			renderMarkdown(content);
 		}
 
-		await persistCards(parsed.extractedCards);
+		await persistCards(parsed.extractedCards, true);
 		showPerfHint = true;
 	});
 
 	onDestroy(() => {
 		clearTimeout(saveTimer);
+		clearTimeout(parseToastTimer);
 		worker?.terminate();
 	});
 
@@ -737,3 +752,31 @@
 	<p class="animate-pulse text-neutral-400">Carregando caderno...</p>
 </div>
 {/if}
+
+<!-- Parser completion toast -->
+{#if parseToast}
+	<div class="fixed bottom-24 right-4 z-[200] flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-neutral-900 dark:bg-neutral-800 border border-neutral-700 text-white text-xs font-semibold shadow-2xl animate-fade-in-up">
+		<svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+		</svg>
+		<span>
+			{#if parseToast.updated > 0 && parseToast.created > 0}
+				{parseToast.created} card{parseToast.created > 1 ? 's' : ''} criado{parseToast.created > 1 ? 's' : ''}, {parseToast.updated} atualizado{parseToast.updated > 1 ? 's' : ''}
+			{:else if parseToast.updated > 0}
+				{parseToast.updated} card{parseToast.updated > 1 ? 's' : ''} atualizado{parseToast.updated > 1 ? 's' : ''} no banco
+			{:else}
+				{parseToast.created} card{parseToast.created > 1 ? 's' : ''} criado{parseToast.created > 1 ? 's' : ''}
+			{/if}
+		</span>
+	</div>
+{/if}
+
+<style>
+	.animate-fade-in-up {
+		animation: fadeInUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+	}
+	@keyframes fadeInUp {
+		from { opacity: 0; transform: translateY(8px); }
+		to   { opacity: 1; transform: translateY(0); }
+	}
+</style>
