@@ -6,6 +6,7 @@
 
     let email = '';
     let password = '';
+    let showPassword = false;
     let isLoading = false;
     let errorMessage = '';
 
@@ -141,7 +142,16 @@
                         Password
                         <a href="/forgot-password" class="text-indigo-600 dark:text-indigo-400 font-medium hover:underline">Esqueci minha senha</a>
                     </label>
-                    <input bind:value={password} type="password" required placeholder="••••••••" class="w-full p-3.5 rounded-xl bg-white dark:bg-neutral-800 border items-center border-neutral-200 dark:border-neutral-700 focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20 transition-all outline-none placeholder:text-neutral-400 dark:text-white dark:placeholder-neutral-500" />
+                    <div class="relative">
+                        <input bind:value={password} type={showPassword ? 'text' : 'password'} required placeholder="••••••••" class="w-full p-3.5 pr-12 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20 transition-all outline-none placeholder:text-neutral-400 dark:text-white dark:placeholder-neutral-500" />
+                        <button type="button" on:click={() => showPassword = !showPassword} class="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors" tabindex="-1">
+                            {#if showPassword}
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+                            {:else}
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            {/if}
+                        </button>
+                    </div>
                 </div>
 
                 <button type="submit" disabled={isLoading} class="w-full py-3.5 mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-[0_4px_14px_0_rgba(79,70,229,0.39)] hover:shadow-[0_6px_20px_rgba(79,70,229,0.23)] transition-all transform active:scale-[0.98] disabled:opacity-70 disabled:active:scale-100 flex justify-center cursor-pointer">

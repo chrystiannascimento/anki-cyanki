@@ -62,3 +62,10 @@ class SyncPullResponse(BaseModel):
     notebooks: List[PullNotebook]
     flashcards: List[PullFlashcard]
     reviewLogs: List[PullReviewLog]
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
