@@ -3,6 +3,7 @@
     import { db, type Notebook, type SavedFilter, type Flashcard } from '$lib/db';
     import { getStorageInfo, pruneOldMedia, clearMediaCache, type StorageInfo } from '$lib/mediaCache';
     import { clearCyankiData } from '$lib/db';
+    import { syncEngine } from '$lib/sync';
 
     // ─── Storage overview ─────────────────────────────────────────────────────
     let storageInfo: StorageInfo | null = null;
@@ -182,6 +183,11 @@
                 await db.notebooks.delete(nb.id);
                 if (cardIds.length) await db.flashcards.bulkDelete(cardIds);
             });
+            // Enqueue server-side deletions
+            await syncEngine.enqueue('DELETE', 'NOTEBOOK', nb.id, {});
+            for (const cardId of cardIds) {
+                await syncEngine.enqueue('DELETE', 'FLASHCARD', cardId, {});
+            }
             lastAction = `🗑 Caderno "${nb.title}" excluído (${cardIds.length} cards removidos)`;
             await refresh();
         } finally {
@@ -226,8 +232,24 @@
     async function clearAll() {
         isClearingAll = true;
         try {
+            // Collect IDs before wiping so we can enqueue DELETEs after
+            const [allNotebooks, allFlashcards] = await Promise.all([
+                db.notebooks.toArray(),
+                db.flashcards.toArray(),
+            ]);
+
             await clearCyankiData();
-            lastAction = '⚠️ Todos os dados locais foram apagados.';
+
+            // Re-enqueue DELETE operations so the server also removes the data on next sync
+            for (const nb of allNotebooks) {
+                await db.syncQueue.add({ action: 'DELETE', entityType: 'NOTEBOOK', entityId: nb.id, payload: {}, createdAt: Date.now() });
+            }
+            for (const fc of allFlashcards) {
+                await db.syncQueue.add({ action: 'DELETE', entityType: 'FLASHCARD', entityId: fc.id, payload: {}, createdAt: Date.now() });
+            }
+
+            syncEngine.triggerSync();
+            lastAction = `⚠️ Dados locais apagados. ${allNotebooks.length} caderno(s) e ${allFlashcards.length} card(s) enfileirados para deleção no servidor.`;
             confirmClearAll = false;
             await refresh();
         } finally {

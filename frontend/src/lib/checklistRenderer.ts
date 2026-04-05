@@ -14,8 +14,8 @@ export interface ChecklistItem {
     checked: boolean;
 }
 
-/** Regex that matches a single checklist line */
-const ITEM_RE = /^- \[( |x|X)\] (.+)/;
+/** Regex that matches a single checklist line (tolerates leading spaces and varied bracket content) */
+const ITEM_RE = /^\s*-\s*\[\s*(x|X| )\s*\]\s*(.+)/;
 
 /**
  * Splits raw card `back` content into:
@@ -26,26 +26,37 @@ const ITEM_RE = /^- \[( |x|X)\] (.+)/;
  *  1. Explicit "Critérios:" / "Criterios:" header followed by `- [ ]` lines
  *  2. Inline checklist items anywhere in the content (no header required)
  */
+// Matches "Critérios:" / "Criterios:" regardless of Unicode normalization form,
+// case, or whether it appears mid-line or at line start.
+const CRITERIA_HEADER_RE = /Crit[eé]rios?\s*:/i;
+
 export function splitContentAndChecklist(content: string): {
     answerText: string;
     checklistItems: ChecklistItem[];
 } {
-    // --- Layout 1: explicit "Critérios:" section ---
-    const criteriaHeaderRe = /^Crit[eé]rios?:\s*\r?\n([\s\S]+)$/im;
-    const headerMatch = content.match(criteriaHeaderRe);
+    // Normalize Unicode so composed (é = \u00e9) and decomposed (e + \u0301) match equally
+    const normalized = content.normalize('NFC');
 
+    // --- Layout 1: explicit "Critérios:" header ---
+    const headerMatch = CRITERIA_HEADER_RE.exec(normalized);
     if (headerMatch && headerMatch.index !== undefined) {
-        const answerText = content.slice(0, headerMatch.index).trim();
-        const checklistItems = parseChecklistItems(headerMatch[1]);
-        return { answerText, checklistItems };
+        // Find the newline that ends the header line
+        const newlineIdx = normalized.indexOf('\n', headerMatch.index);
+        if (newlineIdx !== -1) {
+            const answerText = normalized.slice(0, headerMatch.index).trim();
+            const criteriaBlock = normalized.slice(newlineIdx + 1);
+            const checklistItems = parseChecklistItems(criteriaBlock);
+            if (checklistItems.length > 0) {
+                return { answerText, checklistItems };
+            }
+        }
     }
 
-    // --- Layout 2: standalone checklist lines anywhere ---
-    const lines = content.split('\n');
+    // --- Layout 2: bare checklist lines anywhere in the content ---
+    const lines = normalized.split('\n');
     let firstChecklist = -1;
-
     for (let i = 0; i < lines.length; i++) {
-        if (ITEM_RE.test(lines[i].trim())) {
+        if (ITEM_RE.test(lines[i])) {
             firstChecklist = i;
             break;
         }
@@ -57,7 +68,6 @@ export function splitContentAndChecklist(content: string): {
 
     const answerText = lines.slice(0, firstChecklist).join('\n').trim();
     const checklistText = lines.slice(firstChecklist).join('\n');
-
     return { answerText, checklistItems: parseChecklistItems(checklistText) };
 }
 

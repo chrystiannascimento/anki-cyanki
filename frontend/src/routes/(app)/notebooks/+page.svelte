@@ -8,6 +8,31 @@
 
 	let titleInput = '';
 	let notebooks: Notebook[] = [];
+	let isResyncing = false;
+	let resyncStatus = '';
+
+	async function resyncAllNotebooks() {
+		if (isResyncing) return;
+		isResyncing = true;
+		resyncStatus = '';
+		let updated = 0;
+		try {
+			const all = await db.notebooks.toArray();
+			for (let i = 0; i < all.length; i++) {
+				const nb = all[i];
+				resyncStatus = `Processando ${i + 1}/${all.length}: ${nb.title}`;
+				const { extractedCards, updatedMarkdown, hasNewInjections } = await parseAndInjectNotebookFlashcards(nb.content);
+				if (hasNewInjections) {
+					await db.notebooks.update(nb.id, { content: updatedMarkdown, updatedAt: Date.now() });
+				}
+				updated += extractedCards.length;
+			}
+			resyncStatus = `✓ ${updated} cards atualizados em ${all.length} caderno${all.length !== 1 ? 's' : ''}`;
+		} finally {
+			isResyncing = false;
+			setTimeout(() => { resyncStatus = ''; }, 5000);
+		}
+	}
 
 	onMount(() => {
 		const observable = liveQuery(() => db.notebooks.orderBy('updatedAt').reverse().toArray());
@@ -85,9 +110,26 @@
 
 <div class="min-h-screen bg-neutral-50 dark:bg-neutral-900 transition-colors">
 	<div class="max-w-4xl mx-auto space-y-8 py-8 px-4">
-		<div class="mb-6">
-			<h1 class="text-3xl font-extrabold tracking-tight text-neutral-900 dark:text-white">Your Notebooks</h1>
-			<p class="text-neutral-500 mt-1">PKM connected directly to your Spaced Repetition engine.</p>
+		<div class="mb-6 flex items-center justify-between gap-4 flex-wrap">
+				<div>
+					<h1 class="text-3xl font-extrabold tracking-tight text-neutral-900 dark:text-white">Your Notebooks</h1>
+					<p class="text-neutral-500 mt-1">PKM connected directly to your Spaced Repetition engine.</p>
+				</div>
+				<button
+					on:click={resyncAllNotebooks}
+					disabled={isResyncing}
+					title="Re-parseia todos os cadernos e atualiza os flashcards no banco local"
+					class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-semibold transition-all disabled:opacity-60
+						{isResyncing ? 'border-indigo-400 text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10' : 'border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-300 hover:border-indigo-400 hover:text-indigo-600 dark:hover:border-indigo-500 dark:hover:text-indigo-400'}"
+				>
+					{#if isResyncing}
+						<svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+						{resyncStatus || 'Sincronizando...'}
+					{:else}
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+						{resyncStatus || 'Resync All'}
+					{/if}
+				</button>
 		</div>
 
 	<section class="flex flex-col sm:flex-row gap-4 p-6 bg-white dark:bg-neutral-800 rounded-2xl shadow-sm ring-1 ring-neutral-200 dark:ring-neutral-700">
