@@ -1,11 +1,14 @@
 import Dexie, { type Table } from 'dexie';
 
+export type FlashcardType = 'CONCEITO' | 'FATO' | 'PROCEDIMENTO';
+
 export interface Flashcard {
     id: string; // UUID / NanoID
     front: string;
     back: string;
     tags: string[];
     createdAt: number;
+    type?: FlashcardType; // US-09: Ultralearning card classification
 }
 
 export interface ReviewLog {
@@ -55,6 +58,51 @@ export interface SavedFilter {
     createdAt: number;
 }
 
+// UC-02: Dynamic media (images in flashcard/notebook content) stored as Blobs
+// Avoids Base64 overhead and gives fine-grained storage control
+export interface MediaCacheEntry {
+    url: string;          // Original URL — primary key
+    blob: Blob;           // Raw binary stored natively in IndexedDB
+    mimeType: string;
+    size: number;         // Bytes
+    cachedAt: number;     // Unix timestamp ms
+    flashcardId?: string; // Optional association for pruning by card
+}
+
+// UC-13: Study goals — daily/weekly targets for volume, XP, or focus time
+export interface StudyGoal {
+    id: string;                          // NanoID primary key
+    type: 'volume' | 'xp' | 'time';     // cards reviewed | XP earned | minutes focused
+    label: string;                       // User-defined display name
+    target: number;                      // Unit depends on type: cards | XP | minutes
+    period: 'daily' | 'weekly';          // Resets at midnight or Monday
+    notifyOnComplete: boolean;           // Show browser notification when goal is hit
+    createdAt: number;
+}
+
+// UC-12: Community challenges — offline-first, shareable via 6-char code
+export interface Challenge {
+    id: string;                       // NanoID primary key
+    code: string;                     // 6-char uppercase sharing code (e.g. "X7K2M9")
+    title: string;
+    description?: string;
+    /** Filter criteria used to sample cards at creation time */
+    criteria: {
+        tags: string[];
+        keyword?: string;
+        difficulty?: string;
+    };
+    /** Immutable snapshot of card IDs selected at creation — never changes after creation */
+    cardIds: string[];
+    cardCount: number;
+    isPublic: boolean;
+    createdAt: number;
+    /** Number of times the challenge was attempted locally */
+    attempts: number;
+    /** Whether it has been pushed to the server sync queue */
+    synced: boolean;
+}
+
 export class CyankiDB extends Dexie {
     flashcards!: Table<Flashcard, string>;
     reviewLogs!: Table<ReviewLog, number>;
@@ -62,6 +110,9 @@ export class CyankiDB extends Dexie {
     notebooks!: Table<Notebook, string>;
     leaderboard!: Table<LeaderboardEntry, string>;
     savedFilters!: Table<SavedFilter, string>;
+    mediaCache!: Table<MediaCacheEntry, string>;
+    challenges!: Table<Challenge, string>;
+    studyGoals!: Table<StudyGoal, string>;
 
     constructor() {
         super('cyanki_db');
@@ -82,6 +133,26 @@ export class CyankiDB extends Dexie {
                 }
             });
         });
+
+        // v6: add mediaCache table for Blob storage of dynamic media (UC-02)
+        this.version(6).stores({
+            mediaCache: 'url, cachedAt, flashcardId'
+        });
+
+        // v7: add challenges table for community challenges (UC-12)
+        this.version(7).stores({
+            challenges: 'id, code, createdAt, isPublic, synced'
+        });
+
+        // v8: add studyGoals table for study goals and focus timer (UC-13)
+        this.version(8).stores({
+            studyGoals: 'id, type, period, createdAt'
+        });
+
+        // v9: add type field index to flashcards for Ultralearning classification (US-09/10)
+        this.version(9).stores({
+            flashcards: 'id, *tags, createdAt, type'
+        });
     }
 }
 
@@ -94,6 +165,9 @@ export async function clearCyankiData() {
         db.syncQueue.clear(),
         db.notebooks.clear(),
         db.leaderboard.clear(),
-        db.savedFilters.clear()
+        db.savedFilters.clear(),
+        db.mediaCache.clear(),
+        db.challenges.clear(),
+        db.studyGoals.clear()
     ]);
 }

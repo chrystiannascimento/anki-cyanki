@@ -384,14 +384,20 @@
                                          <span class="text-[10px] font-bold px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-500 rounded">+{sf.criteria.tags.length - 3}</span>
                                     {/if}
                                 </div>
-                                <div class="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-700 flex flex-col md:flex-row gap-2 justify-end">
-                                    <a href={`/practice/solve/${sf.id}`} class="px-4 py-2 bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700 hover:bg-neutral-200 font-bold rounded-lg text-sm transition-colors flex items-center justify-center gap-1.5 shadow-sm w-full md:w-auto">
-                                        Resolver Prática
+                                <div class="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-700 flex flex-col gap-2">
+                                    <a href={`/practice/filter-stats/${sf.id}`} class="px-4 py-2 bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 hover:bg-violet-100 dark:hover:bg-violet-900/50 font-bold rounded-lg text-sm transition-colors flex items-center justify-center gap-1.5 shadow-sm w-full">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                        Ver Desempenho
                                     </a>
-                                    <a href={`/practice/study/${sf.id}`} class="px-4 py-2 bg-indigo-600 text-white dark:bg-indigo-500 dark:hover:bg-indigo-400 hover:bg-indigo-500 font-bold rounded-lg text-sm transition-colors flex items-center justify-center gap-1.5 shadow-sm w-full md:w-auto">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                                        Estudar Caderno (FSRS)
-                                    </a>
+                                    <div class="flex flex-col md:flex-row gap-2">
+                                        <a href={`/practice/solve/${sf.id}`} class="px-4 py-2 bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700 hover:bg-neutral-200 font-bold rounded-lg text-sm transition-colors flex items-center justify-center gap-1.5 shadow-sm w-full md:w-auto">
+                                            Resolver Prática
+                                        </a>
+                                        <a href={`/practice/study/${sf.id}`} class="px-4 py-2 bg-indigo-600 text-white dark:bg-indigo-500 dark:hover:bg-indigo-400 hover:bg-indigo-500 font-bold rounded-lg text-sm transition-colors flex items-center justify-center gap-1.5 shadow-sm w-full md:w-auto">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                            Estudar Caderno (FSRS)
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         </div>

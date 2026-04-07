@@ -1,6 +1,103 @@
 import { nanoid } from 'nanoid';
-import { db, type Flashcard } from '$lib/db';
+import { db, type Flashcard, type FlashcardType } from '$lib/db';
 import { syncEngine } from '$lib/sync';
+
+// ─── Prompt Master parser (shared by AI generation and .md import) ──────────
+
+export interface ParsedPromptCard {
+    type?: FlashcardType;
+    front: string;
+    back: string;   // answer text (A: field)
+    criteria: string; // raw checklist block (may be empty)
+    tags: string[];
+}
+
+/**
+ * Parses markdown in the Prompt Master / AI output format:
+ *
+ *   Tipo: CONCEITO
+ *   Q: question...
+ *   A: answer...
+ *   Critérios:
+ *   - [ ] criterion 1
+ *   Tags: tag1, tag2
+ *
+ * Two flashcards are separated by one or more blank lines.
+ * "Tipo:" and "Critérios:" sections are optional for backward compat.
+ *
+ * Returns an array of parsed cards ready for preview (not yet in DB).
+ */
+export function parsePromptMasterCards(markdown: string): ParsedPromptCard[] {
+    const cards: ParsedPromptCard[] = [];
+
+    // Split on double (or more) blank lines to separate card blocks
+    const blocks = markdown.split(/\n{2,}/);
+
+    for (const rawBlock of blocks) {
+        const block = rawBlock.trim();
+        if (!block) continue;
+
+        // Must have at least Q: and A: to be a valid card
+        if (!block.includes('Q:') || !block.includes('A:')) continue;
+
+        const card: ParsedPromptCard = { front: '', back: '', criteria: '', tags: [] };
+
+        // Tipo:
+        const tipoMatch = block.match(/^Tipo:\s*(CONCEITO|FATO|PROCEDIMENTO)/im);
+        if (tipoMatch) card.type = tipoMatch[1].toUpperCase() as FlashcardType;
+
+        // Q: (single line)
+        const qMatch = block.match(/^Q:\s*(.+)/m);
+        if (qMatch) card.front = qMatch[1].trim();
+
+        // Tags: (single line — capture before A: parsing to avoid confusion)
+        const tagsMatch = block.match(/^Tags:\s*(.+)/im);
+        if (tagsMatch) {
+            card.tags = tagsMatch[1]
+                .split(/[,;|\s]+/)
+                .map(t => t.trim())
+                .filter(Boolean);
+        }
+
+        // Critérios: block — everything from "Critérios:" to "Tags:" (or end)
+        const criteriaMatch = block.match(/^Crit[eé]rios?:\s*\r?\n([\s\S]+?)(?=\nTags:|\n\nQ:|$)/im);
+        if (criteriaMatch) card.criteria = criteriaMatch[1].trim();
+
+        // A: — from after "A:" up to "Critérios:" or "Tags:" or end
+        const aMatch = block.match(/^A:\s*([\s\S]+?)(?=\nCrit[eé]rios?:|\nTags:|\n\nQ:|$)/im);
+        if (aMatch) card.back = aMatch[1].trim();
+
+        if (card.front && card.back) cards.push(card);
+    }
+
+    return cards;
+}
+
+/**
+ * Converts a ParsedPromptCard into a full Flashcard by merging the
+ * Critérios block into the back field and assigning an ID.
+ *
+ * The merged back format:
+ *   {answer text}
+ *
+ *   Critérios:
+ *   - [ ] criterion 1
+ *   - [ ] criterion 2
+ */
+export function promptCardToFlashcard(parsed: ParsedPromptCard): Flashcard {
+    const mergedBack = parsed.criteria
+        ? `${parsed.back}\n\nCritérios:\n${parsed.criteria}`
+        : parsed.back;
+
+    return {
+        id: nanoid(),
+        front: parsed.front,
+        back: mergedBack,
+        tags: parsed.tags,
+        type: parsed.type,
+        createdAt: Date.now()
+    };
+}
 
 /**
  * Parses markdown to extract flashcards in Q: / A: format.
@@ -27,44 +124,40 @@ export async function parseAndInjectNotebookFlashcards(markdown: string) {
         cardDictionary.set(card.front.trim().toLowerCase(), card);
     }
 
-    // Use a multiline regex to capture everything from Q: until the next Q: or End Of File
-    // Captures ID in match[1], Front in match[2], Back in match[3], and Tags in match[4]
-    const flashcardRegex = /^Q:\s*(?:<!--\s*id:\s*([\w-]+)\s*-->\s*)?([^\n]+)\r?\n^A:\s*([\s\S]+?)(?:\r?\n^Tags:\s*([^\n]+))?(?=\r?\n^Q:|$)/gm;
+    // Split markdown into blocks on card boundaries (Tipo:? + Q:).
+    // Each block is parsed individually so the regex has no `m` flag and
+    // $ anchors to the end of the block — preventing the lazy [\s\S]+?
+    // from stopping at the first line-end and truncating Critérios blocks.
+    const blockSplitRe = /(?=^(?:Tipo:\s+\S[^\n]*\n)?Q:\s)/m;
+    const blocks = markdown.split(blockSplitRe);
 
-    // Find all matches iteratively to reconstruct the string accurately
-    let match;
-    let lastIndex = 0;
+    // Per-block regex — NO `m` flag, so ^ and $ anchor to block boundaries.
+    const cardRe = /^(?:Tipo:\s*(CONCEITO|FATO|PROCEDIMENTO)[ \t]*\n)?Q:\s*(?:<!--\s*id:\s*([\w-]+)\s*-->\s*)?([^\n]+)\r?\nA:\s*([\s\S]+?)(?:\r?\nTags:\s*([^\n]+))?\s*$/;
 
-    // We must reset the regex index
-    flashcardRegex.lastIndex = 0;
-
-    while ((match = flashcardRegex.exec(markdown)) !== null) {
-        // match[0] is the whole block, match[1] is ID (optional), match[2] is front, match[3] is back
-        const fullMatch = match[0];
-        let cardId = match[1];
-
-        const frontText = match[2].trim();
-        let backText = match[3].trim();
-        let tagsArray: string[] = [];
-
-        const tagsString = match[4];
-        if (tagsString) {
-            tagsArray = tagsString.split(/[,|;|\s]+/).filter((t: string) => t.trim() !== '');
+    for (const block of blocks) {
+        const match = cardRe.exec(block);
+        if (!match) {
+            updatedMarkdown += block;
+            continue;
         }
+
+        const cardType = match[1] ? match[1].toUpperCase() as FlashcardType : undefined;
+        let cardId = match[2];
+        const frontText = match[3].trim();
+        const backText = match[4].trim();
+        const tagsArray = match[5]
+            ? match[5].split(/[,|;\s]+/).filter((t: string) => t.trim() !== '')
+            : [];
 
         let injected = false;
 
         if (!cardId) {
-            // Deduplication Strategy: Test if this newly typed Question already fundamentally exists
             const normalizedFront = frontText.toLowerCase();
             const collisionCard = cardDictionary.get(normalizedFront);
 
-            // If the front matches, and the back is also an exact match (ignoring spaces), it's a true Duplication
             if (collisionCard && collisionCard.back.trim() === backText) {
-                // Do NOT generate a new ID. Re-use the existing card's ID invisibly.
                 cardId = collisionCard.id;
             } else {
-                // Truly unique new card
                 cardId = nanoid();
             }
 
@@ -77,25 +170,14 @@ export async function parseAndInjectNotebookFlashcards(markdown: string) {
             front: frontText,
             back: backText,
             tags: tagsArray,
+            type: cardType,
             createdAt: Date.now()
         });
 
-        // Push the leading unconverted text
-        updatedMarkdown += markdown.slice(lastIndex, match.index);
-
-        if (injected) {
-            // Rebuild the match with the ID injected, safely preserving spacing and Tags text
-            updatedMarkdown += fullMatch.replace(/^Q:\s*/, `Q: <!-- id: ${cardId} --> `);
-        } else {
-            // Keep unchanged match
-            updatedMarkdown += fullMatch;
-        }
-
-        lastIndex = flashcardRegex.lastIndex;
+        updatedMarkdown += injected
+            ? block.replace(/^Q:\s*/m, `Q: <!-- id: ${cardId} --> `)
+            : block;
     }
-
-    // Append the tail end of the markdown
-    updatedMarkdown += markdown.slice(lastIndex);
 
     // Update existing cards or create new ones in the Database
     for (const card of extractedCards) {
@@ -103,13 +185,15 @@ export async function parseAndInjectNotebookFlashcards(markdown: string) {
         if (existing) {
             const hasChanged = existing.front !== card.front ||
                 existing.back !== card.back ||
-                (existing.tags || []).join() !== (card.tags || []).join();
+                (existing.tags || []).join() !== (card.tags || []).join() ||
+                existing.type !== card.type;
 
             if (hasChanged) {
                 await db.flashcards.update(card.id, {
                     front: card.front,
                     back: card.back,
-                    tags: card.tags
+                    tags: card.tags,
+                    type: card.type
                 });
                 await syncEngine.enqueue('UPDATE', 'FLASHCARD', card.id, card);
             }

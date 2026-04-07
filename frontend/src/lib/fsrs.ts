@@ -1,6 +1,7 @@
 import { FSRS, type Card as FSRSCardType, Rating as FSRSRating, generatorParameters, createEmptyCard } from 'ts-fsrs';
 import { db, type ReviewLog } from '$lib/db';
 import { syncEngine } from '$lib/sync';
+import { typeMultiplier } from '$lib/checklistRenderer';
 
 const params = generatorParameters({ request_retention: 0.90 });
 const f = new FSRS(params);
@@ -83,8 +84,22 @@ export async function processReview(flashcardId: string, rating: FSRSRating) {
     const schedulingCards = f.repeat(card, now);
     const ratingKey = String(rating) as unknown as keyof typeof schedulingCards;
 
-    const nextState = (schedulingCards as any)[ratingKey]?.card || card;
+    let nextState = (schedulingCards as any)[ratingKey]?.card || card;
     const logItem = (schedulingCards as any)[ratingKey]?.log;
+
+    // US-10: Apply type-based interval multiplier for Good/Easy ratings
+    // FATO × 1.5 | CONCEITO × 1.0 | PROCEDIMENTO × 1.5
+    if (rating >= FSRSRating.Good) {
+        const flashcard = await db.flashcards.get(flashcardId);
+        const mult = typeMultiplier(flashcard?.type);
+        if (mult !== 1.0 && nextState.due) {
+            const dueDiff = nextState.due.getTime() - now.getTime();
+            nextState = {
+                ...nextState,
+                due: new Date(now.getTime() + dueDiff * mult)
+            };
+        }
+    }
 
     // 3. Save Review Log to Dexie
     const reviewLog: ReviewLog = {

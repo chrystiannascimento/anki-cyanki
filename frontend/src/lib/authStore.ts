@@ -14,11 +14,25 @@ const initialSession: UserSession = {
 
 export const session = writable<UserSession>(initialSession);
 
+/**
+ * UC-24 — Set to true when the backend returns 401 (token expired / revoked).
+ * The app stays accessible in offline-read-only mode; this flag drives the
+ * "sessão expirada" banner in the root layout.
+ */
+export const sessionExpired = writable(false);
+
+/** Called by the sync engine when it receives a 401 from the API. */
+export function markSessionExpired() {
+    sessionExpired.set(true);
+}
+
 session.subscribe(value => {
     if (browser) {
         if (value.token && value.email) {
             localStorage.setItem('cyanki_token', value.token);
             localStorage.setItem('cyanki_email', value.email);
+            // Clear expiry flag on fresh login
+            sessionExpired.set(false);
         } else {
             localStorage.removeItem('cyanki_token');
             localStorage.removeItem('cyanki_email');

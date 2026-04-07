@@ -6,6 +6,8 @@
 	import { nanoid } from 'nanoid';
 	import { liveQuery } from 'dexie';
 	import { session } from '$lib/authStore';
+	import { gamificationStore } from '$lib/stores/gamification';
+	import { lastSession, clearSession, getResumeUrl, timeAgo } from '$lib/stores/sessionContext';
 
 	let front = '';
 	let back = '';
@@ -175,6 +177,77 @@
 				</div>
 			{/if}
 		</div>
+
+		<!-- UC-11: Resume Widget — shown when user has an active study session context -->
+		{#if $lastSession && (Date.now() - $lastSession.savedAt) < 86_400_000}
+		<section class="relative overflow-hidden rounded-2xl border border-indigo-300 dark:border-indigo-700 bg-gradient-to-r from-indigo-50 to-violet-50 dark:from-indigo-950/60 dark:to-violet-950/60 p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 shadow-sm">
+			<!-- Decorative glow -->
+			<div class="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent pointer-events-none"></div>
+
+			<div class="flex-1 min-w-0">
+				<div class="flex items-center gap-2 mb-1">
+					<span class="text-xs font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400">Continuar de onde parou</span>
+					<span class="text-xs text-neutral-400 dark:text-neutral-500">{timeAgo($lastSession.savedAt)}</span>
+				</div>
+				<p class="font-bold text-neutral-800 dark:text-neutral-100 truncate text-lg">
+					{#if $lastSession.type === 'practice'}
+						<span class="text-indigo-600 dark:text-indigo-400 mr-1">📁</span>
+					{:else if $lastSession.type === 'notebook'}
+						<span class="text-violet-600 dark:text-violet-400 mr-1">📓</span>
+					{:else}
+						<span class="text-emerald-600 dark:text-emerald-400 mr-1">🌐</span>
+					{/if}
+					{$lastSession.name}
+				</p>
+				{#if $lastSession.totalCards > 0}
+					<div class="mt-2 flex items-center gap-3">
+						<div class="flex-1 h-1.5 bg-indigo-200 dark:bg-indigo-900 rounded-full overflow-hidden max-w-[200px]">
+							<div class="h-full bg-indigo-500 rounded-full transition-all" style="width: {Math.min(($lastSession.cardIndex / $lastSession.totalCards) * 100, 100)}%"></div>
+						</div>
+						<span class="text-xs font-semibold text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
+							{$lastSession.cardIndex} / {$lastSession.totalCards} cards
+						</span>
+					</div>
+				{/if}
+			</div>
+
+			<div class="flex items-center gap-2 shrink-0">
+				<a href={getResumeUrl($lastSession)} class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm shadow-md shadow-indigo-500/20 transition-all hover:-translate-y-0.5 active:scale-95">
+					Continuar →
+				</a>
+				<button
+					on:click={() => clearSession()}
+					class="p-2 rounded-xl text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 hover:bg-neutral-200/60 dark:hover:bg-neutral-700/60 transition"
+					aria-label="Dispensar"
+					title="Dispensar"
+				>
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+				</button>
+			</div>
+		</section>
+		{/if}
+
+		<!-- Streak & Gamification summary -->
+		{#if $gamificationStore.streak > 0 || $gamificationStore.level > 1}
+		<section class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+			<div class="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-2xl border border-orange-100 dark:border-orange-800/50 flex flex-col items-center justify-center">
+				<span class="text-2xl font-black text-orange-500 dark:text-orange-400">🔥 {$gamificationStore.streak}</span>
+				<span class="text-[10px] font-extrabold text-orange-700/60 dark:text-orange-300/60 uppercase tracking-widest mt-1">Sequência</span>
+			</div>
+			<div class="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-800/50 flex flex-col items-center justify-center">
+				<span class="text-2xl font-black text-indigo-500 dark:text-indigo-400">Nv. {$gamificationStore.level}</span>
+				<span class="text-[10px] font-extrabold text-indigo-700/60 dark:text-indigo-300/60 uppercase tracking-widest mt-1">Nível</span>
+			</div>
+			<div class="p-4 bg-violet-50 dark:bg-violet-900/20 rounded-2xl border border-violet-100 dark:border-violet-800/50 flex flex-col items-center justify-center">
+				<span class="text-2xl font-black text-violet-500 dark:text-violet-400">{$gamificationStore.xp} XP</span>
+				<span class="text-[10px] font-extrabold text-violet-700/60 dark:text-violet-300/60 uppercase tracking-widest mt-1">XP Atual</span>
+			</div>
+			<div class="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-100 dark:border-amber-800/50 flex flex-col items-center justify-center">
+				<span class="text-2xl font-black text-amber-500 dark:text-amber-400">🪙 {$gamificationStore.coins}</span>
+				<span class="text-[10px] font-extrabold text-amber-700/60 dark:text-amber-300/60 uppercase tracking-widest mt-1">Moedas</span>
+			</div>
+		</section>
+		{/if}
 
 		<section class="grid grid-cols-1 md:grid-cols-3 gap-6">
 		    <div class="p-6 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl shadow-sm border border-indigo-100 dark:border-indigo-800/50 flex flex-col items-center justify-center transition-transform hover:scale-105 cursor-default">

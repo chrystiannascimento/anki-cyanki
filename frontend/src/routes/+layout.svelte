@@ -1,17 +1,38 @@
 <script lang="ts">
     import '../app.css';
-    import { onMount } from 'svelte';
+    import { onMount, onDestroy } from 'svelte';
     import { page } from '$app/stores';
     import { goto } from '$app/navigation';
-    import { session } from '$lib/authStore';
-    import { syncEngine, isSyncingStore } from '$lib/sync';
+    import { session, sessionExpired } from '$lib/authStore';
+    import { syncEngine, isSyncingStore, lastSyncedAt, syncPendingCount } from '$lib/sync';
     import { themeStore, toggleTheme } from '$lib/theme';
 
     let mounted = false;
+    let isOnline = true;
+    let periodicSyncInterval: ReturnType<typeof setInterval> | null = null;
+
+    // UC-24: public routes that don't require authentication
+    const PUBLIC_ROUTES = ['/login', '/register', '/forgot-password', '/reset-password'];
+
+    function updateOnlineStatus() {
+        isOnline = navigator.onLine;
+    }
+
+    function syncIfAuthed() {
+        if ($session.token) syncEngine.triggerSync();
+    }
+
+    function onVisibilityChange() {
+        if (document.visibilityState === 'visible') syncIfAuthed();
+    }
 
     onMount(() => {
         mounted = true;
-        
+        isOnline = navigator.onLine;
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+        document.addEventListener('visibilitychange', onVisibilityChange);
+
         // Hydrate Theme State securely
         const storedTheme = localStorage.getItem('theme');
         if (storedTheme === 'dark' || (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -23,27 +44,58 @@
         }
 
         // Trigger a pull/push sync block as soon as the authenticated user opens the App
-        if ($session.token) {
-            syncEngine.triggerSync();
+        syncIfAuthed();
+
+        // Periodic sync every 5 minutes to pick up remote deletions from other devices
+        periodicSyncInterval = setInterval(syncIfAuthed, 5 * 60 * 1000);
+    });
+
+    onDestroy(() => {
+        if (typeof window !== 'undefined') {
+            window.removeEventListener('online', updateOnlineStatus);
+            window.removeEventListener('offline', updateOnlineStatus);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
         }
+        if (periodicSyncInterval) clearInterval(periodicSyncInterval);
     });
 
     $: if (mounted) {
         const currentRoute = $page.url.pathname;
-        const isPublicRoute = ['/login', '/register'].includes(currentRoute);
+        const isPublicRoute = PUBLIC_ROUTES.some(r => currentRoute.startsWith(r));
         const hasToken = !!$session.token;
 
         if (!hasToken && !isPublicRoute && currentRoute !== '/') {
             // If not logged in and trying to access a protected route, go to login
             goto('/login');
-        } else if (hasToken && isPublicRoute) {
-            // If logged in and on login/register, go to dashboard
+        } else if (hasToken && !$sessionExpired && (currentRoute === '/login' || currentRoute === '/register')) {
+            // If logged in (and session is valid) and on login/register, go to dashboard
             goto('/dashboard');
         }
     }
 </script>
 
 <slot />
+
+<!-- UC-24: Offline banner -->
+{#if mounted && !isOnline}
+    <div class="fixed top-0 inset-x-0 z-[100] flex items-center justify-center gap-2 bg-amber-500 text-white text-xs font-semibold px-4 py-2 shadow-lg pointer-events-none">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728M15.536 8.464a5 5 0 010 7.072M12 12h.01M8.464 15.536a5 5 0 010-7.072M5.636 18.364a9 9 0 010-12.728"/>
+        </svg>
+        Modo offline — dados locais disponíveis, sincronização desativada
+    </div>
+{/if}
+
+<!-- UC-24: Session expired banner -->
+{#if mounted && $sessionExpired && $session.token}
+    <div class="fixed top-0 inset-x-0 z-[100] flex items-center justify-center gap-3 bg-rose-600 text-white text-xs font-semibold px-4 py-2 shadow-lg">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+        </svg>
+        Sessão expirada — dados locais disponíveis, mas a sincronização está pausada.
+        <a href="/login" class="underline underline-offset-2 hover:text-rose-200 transition-colors">Fazer login novamente</a>
+    </div>
+{/if}
 
 <!-- Global Theme Toggle -->
 <button 
@@ -61,12 +113,30 @@
 </button>
 
 <!-- Global Sync Indicator -->
-{#if $isSyncingStore}
-    <div class="fixed bottom-4 right-4 z-50 flex items-center gap-2 bg-neutral-900 dark:bg-neutral-800 text-white text-xs font-semibold px-4 py-2 rounded-full shadow-lg border border-neutral-700 pointer-events-none transition-all duration-300 transform translate-y-0 opacity-100">
-        <svg class="animate-spin h-3.5 w-3.5 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        Syncing...
+{#if mounted && $session.token && !$sessionExpired}
+    <div class="fixed bottom-20 right-4 z-50 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg border transition-all duration-300
+        {$isSyncingStore
+            ? 'bg-neutral-900 dark:bg-neutral-800 border-neutral-700 text-indigo-300'
+            : $syncPendingCount > 0
+                ? 'bg-amber-500/10 border-amber-500/40 text-amber-500 dark:text-amber-400'
+                : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'}"
+    >
+        {#if $isSyncingStore}
+            <svg class="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            Sincronizando...
+        {:else if $syncPendingCount > 0}
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            {$syncPendingCount} pendente{$syncPendingCount > 1 ? 's' : ''}
+        {:else}
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+            </svg>
+            Sincronizado
+        {/if}
     </div>
 {/if}
