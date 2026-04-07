@@ -9,6 +9,7 @@
 
     let mounted = false;
     let isOnline = true;
+    let periodicSyncInterval: ReturnType<typeof setInterval> | null = null;
 
     // UC-24: public routes that don't require authentication
     const PUBLIC_ROUTES = ['/login', '/register', '/forgot-password', '/reset-password'];
@@ -17,11 +18,20 @@
         isOnline = navigator.onLine;
     }
 
+    function syncIfAuthed() {
+        if ($session.token) syncEngine.triggerSync();
+    }
+
+    function onVisibilityChange() {
+        if (document.visibilityState === 'visible') syncIfAuthed();
+    }
+
     onMount(() => {
         mounted = true;
         isOnline = navigator.onLine;
         window.addEventListener('online', updateOnlineStatus);
         window.addEventListener('offline', updateOnlineStatus);
+        document.addEventListener('visibilitychange', onVisibilityChange);
 
         // Hydrate Theme State securely
         const storedTheme = localStorage.getItem('theme');
@@ -34,16 +44,19 @@
         }
 
         // Trigger a pull/push sync block as soon as the authenticated user opens the App
-        if ($session.token) {
-            syncEngine.triggerSync();
-        }
+        syncIfAuthed();
+
+        // Periodic sync every 5 minutes to pick up remote deletions from other devices
+        periodicSyncInterval = setInterval(syncIfAuthed, 5 * 60 * 1000);
     });
 
     onDestroy(() => {
         if (typeof window !== 'undefined') {
             window.removeEventListener('online', updateOnlineStatus);
             window.removeEventListener('offline', updateOnlineStatus);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
         }
+        if (periodicSyncInterval) clearInterval(periodicSyncInterval);
     });
 
     $: if (mounted) {
