@@ -25,7 +25,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://cyanki:cyanki_pass@db:5432/cyanki_db
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       - ENVIRONMENT=development
       - FRONTEND_URL=http://localhost:5174
     volumes:
@@ -36,10 +36,12 @@ services:
 
   db:
     image: postgres:15-alpine
+    env_file:
+      - .env
     environment:
-      - POSTGRES_USER=cyanki
-      - POSTGRES_PASSWORD=cyanki_pass
-      - POSTGRES_DB=cyanki_db
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
     ports:
       - "5432:5432"
     volumes:
