@@ -86,7 +86,7 @@ function parseBlock(
     };
 
     const blockText = injected
-        ? block.replace(/^Q:\s*/m, `Q: <!-- id: ${cardId} --> `)
+        ? block.replace(/^Q:\s*/m, `Q: <!--id:${cardId}--> `)
         : block;
 
     return { blockText, cards: [card], hasNewInjections: injected };

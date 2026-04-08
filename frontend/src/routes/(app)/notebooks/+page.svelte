@@ -68,7 +68,7 @@
 	async function deleteNotebook(id: string) {
 		const nb = await db.notebooks.get(id);
 		const cardIds = nb
-			? (nb.content.match(/<!--id:([a-zA-Z0-9_-]+)-->/g) ?? []).map(m => m.replace(/<!--id:|-->/g, ''))
+			? (nb.content.match(/<!--\s*id:\s*([\w-]+)\s*-->/g) ?? []).map(m => m.match(/<!--\s*id:\s*([\w-]+)\s*-->/)?.[1] ?? '')
 			: [];
 		markNotebooksDeleted([id]);
 		if (cardIds.length) markFlashcardsDeleted(cardIds);

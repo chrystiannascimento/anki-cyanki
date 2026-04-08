@@ -91,7 +91,7 @@
     function cardsForNotebook(nb: Notebook): number {
         // Cards belonging to a notebook have their IDs embedded in the content
         // Each Q:/A: block has a <!--id:XXX--> tag injected by the parser
-        const matches = nb.content.match(/<!--id:[a-zA-Z0-9_-]+-->/g);
+        const matches = nb.content.match(/<!--\s*id:\s*[\w-]+\s*-->/g);
         return matches ? matches.length : 0;
     }
 
@@ -115,8 +115,8 @@
         isExporting = nb.id;
         try {
             // Find all card IDs referenced in the notebook
-            const idMatches = nb.content.match(/<!--id:([a-zA-Z0-9_-]+)-->/g) ?? [];
-            const cardIds = idMatches.map(m => m.replace(/<!--id:|-->/g, ''));
+            const idMatches = nb.content.match(/<!--\s*id:\s*([\w-]+)\s*-->/g) ?? [];
+            const cardIds = idMatches.map(m => m.match(/<!--\s*id:\s*([\w-]+)\s*-->/)?.[1] ?? '');
             const cards = cardIds.length
                 ? await db.flashcards.where('id').anyOf(cardIds).toArray()
                 : [];
@@ -180,8 +180,8 @@
         if (!confirm(`Excluir o caderno "${nb.title}" e todos os seus flashcards? Esta ação não pode ser desfeita.`)) return;
         isDeletingNotebook = nb.id;
         try {
-            const idMatches = nb.content.match(/<!--id:([a-zA-Z0-9_-]+)-->/g) ?? [];
-            const cardIds = idMatches.map(m => m.replace(/<!--id:|-->/g, ''));
+            const idMatches = nb.content.match(/<!--\s*id:\s*([\w-]+)\s*-->/g) ?? [];
+            const cardIds = idMatches.map(m => m.match(/<!--\s*id:\s*([\w-]+)\s*-->/)?.[1] ?? '');
             // Tombstone before deleting so pull never re-inserts
             markNotebooksDeleted([nb.id]);
             if (cardIds.length) markFlashcardsDeleted(cardIds);
@@ -210,8 +210,8 @@
         if (flashcards.length > 0 && notebooks.length >= 0) {
             const referenced = new Set<string>();
             for (const nb of notebooks) {
-                const matches = nb.content.match(/<!--id:([a-zA-Z0-9_-]+)-->/g) ?? [];
-                for (const m of matches) referenced.add(m.replace(/<!--id:|-->/g, ''));
+                const matches = nb.content.match(/<!--\s*id:\s*([\w-]+)\s*-->/g) ?? [];
+                for (const m of matches) { const id = m.match(/<!--\s*id:\s*([\w-]+)\s*-->/)?.[1]; if (id) referenced.add(id); }
             }
             orphanCards = flashcards.filter(fc => !referenced.has(fc.id));
         } else {

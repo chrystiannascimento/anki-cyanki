@@ -27,13 +27,22 @@
     // ─── Derived ─────────────────────────────────────────────────────────────
     let referencedIds: Set<string> = new Set();
 
-    $: {
-        referencedIds = new Set();
-        for (const nb of notebooks) {
-            const matches = nb.content.match(/<!--id:([a-zA-Z0-9_-]+)-->/g) ?? [];
-            for (const m of matches) referencedIds.add(m.replace(/<!--id:|-->/g, ''));
+    // Matches both <!-- id: xyz --> (old) and <!--id:xyz--> (new) formats
+    const ID_TAG_RE = /<!--\s*id:\s*([\w-]+)\s*-->/g;
+
+    function buildReferencedIds(nbs: Notebook[]): Set<string> {
+        const ids = new Set<string>();
+        for (const nb of nbs) {
+            let m: RegExpExecArray | null;
+            ID_TAG_RE.lastIndex = 0;
+            while ((m = ID_TAG_RE.exec(nb.content)) !== null) {
+                ids.add(m[1]);
+            }
         }
+        return ids;
     }
+
+    $: referencedIds = buildReferencedIds(notebooks);
 
     $: filtered = allCards.filter(card => {
         if (filterMode === 'orphan' && referencedIds.has(card.id)) return false;
@@ -108,8 +117,9 @@
     }
 
     function notebookForCard(id: string): string | null {
+        const re = new RegExp(`<!--\\s*id:\\s*${id}\\s*-->`);
         for (const nb of notebooks) {
-            if (nb.content.includes(`<!--id:${id}-->`)) return nb.title;
+            if (re.test(nb.content)) return nb.title;
         }
         return null;
     }

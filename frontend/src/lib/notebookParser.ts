@@ -175,7 +175,7 @@ export async function parseAndInjectNotebookFlashcards(markdown: string) {
         });
 
         updatedMarkdown += injected
-            ? block.replace(/^Q:\s*/m, `Q: <!-- id: ${cardId} --> `)
+            ? block.replace(/^Q:\s*/m, `Q: <!--id:${cardId}--> `)
             : block;
     }
 

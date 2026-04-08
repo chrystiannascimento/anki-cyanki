@@ -91,7 +91,7 @@ function parseMarkdown(
         });
 
         updatedMarkdown += injected
-            ? block.replace(/^Q:\s*/m, `Q: <!-- id: ${cardId} --> `)
+            ? block.replace(/^Q:\s*/m, `Q: <!--id:${cardId}--> `)
             : block;
     }
 
