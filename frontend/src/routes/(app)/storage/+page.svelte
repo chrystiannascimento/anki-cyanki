@@ -35,6 +35,8 @@
     let isDeletingNotebook: string | null = null;
     let confirmClearAll = false;
     let isClearingAll = false;
+    let isReuploadingAll = false;
+    let reuploadStatus = '';
     let lastAction = '';
 
     const PACKAGE_SIZE = 500; // cards per export package
@@ -244,6 +246,46 @@
             await refresh();
         } finally {
             isDeletingOrphans = false;
+        }
+    }
+
+    // ─── Force full re-upload (recovery after server DB reset) ───────────────
+    async function reuploadAll() {
+        if (!confirm(`Re-enviar todos os dados locais para o servidor?\n\nIsso enfileira CREATE para ${counts.notebooks} caderno(s) e ${counts.flashcards} flashcard(s). Use quando os dados do servidor estiverem desatualizados em relação ao dispositivo atual.`)) return;
+        isReuploadingAll = true;
+        reuploadStatus = '';
+        try {
+            const [allNotebooks, allFlashcards] = await Promise.all([
+                db.notebooks.toArray(),
+                db.flashcards.toArray(),
+            ]);
+
+            let queued = 0;
+            for (const nb of allNotebooks) {
+                await syncEngine.enqueue('CREATE', 'NOTEBOOK', nb.id, {
+                    title: nb.title,
+                    content: nb.content,
+                    isPublic: false
+                });
+                queued++;
+                reuploadStatus = `Enfileirando... ${queued}/${allNotebooks.length + allFlashcards.length}`;
+            }
+            for (const fc of allFlashcards) {
+                await syncEngine.enqueue('CREATE', 'FLASHCARD', fc.id, {
+                    front: fc.front,
+                    back: fc.back,
+                    tags: fc.tags ?? [],
+                    type: fc.type
+                });
+                queued++;
+                reuploadStatus = `Enfileirando... ${queued}/${allNotebooks.length + allFlashcards.length}`;
+            }
+
+            lastAction = `↑ ${allNotebooks.length} caderno(s) e ${allFlashcards.length} flashcard(s) enfileirados para re-envio.`;
+            reuploadStatus = '';
+            await refresh();
+        } finally {
+            isReuploadingAll = false;
         }
     }
 
@@ -616,6 +658,26 @@
                     {isPruningLogs ? 'Limpando...' : 'Limpar antigos'}
                 </button>
             </div>
+        </div>
+
+        <!-- Force re-upload -->
+        <div class="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl">
+            <div class="flex-1">
+                <p class="font-bold text-sm text-neutral-800 dark:text-neutral-200">Re-enviar tudo ao servidor</p>
+                <p class="text-xs text-neutral-400 mt-0.5">
+                    Útil quando outro dispositivo está com dados diferentes (ex: após reset do banco). Enfileira CREATE para todos os cadernos e flashcards locais — o servidor irá mesclar sem duplicar.
+                </p>
+                {#if reuploadStatus}
+                    <p class="text-xs text-indigo-500 font-semibold mt-1">{reuploadStatus}</p>
+                {/if}
+            </div>
+            <button
+                on:click={reuploadAll}
+                disabled={isReuploadingAll}
+                class="shrink-0 px-3 py-2 text-xs font-bold bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-lg transition disabled:opacity-50"
+            >
+                {isReuploadingAll ? reuploadStatus || 'Enfileirando...' : '↑ Re-enviar tudo'}
+            </button>
         </div>
 
         <!-- Danger zone -->

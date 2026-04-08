@@ -16,74 +16,77 @@ async def push_sync(request: SyncPushRequest, db: AsyncSession = Depends(get_db)
     
     for op in request.operations:
         try:
-            if op.entityType == "FLASHCARD":
-                if op.action in ["CREATE", "UPDATE"]:
-                    # Ensure the card either belongs to current_user or doesn't exist yet
-                    card = await db.get(Flashcard, str(op.entityId))
-                    if not card:
-                        card = Flashcard(id=str(op.entityId), user_id=current_user.id)
-                        db.add(card)
-                    elif card.user_id != current_user.id:
-                        raise HTTPException(status_code=403, detail="Not authorized to modify this flashcard")
-                    
-                    card.front = op.payload.get("front", card.front)
-                    card.back = op.payload.get("back", card.back)
-                    
-                    tags_payload = op.payload.get("tags")
-                    if isinstance(tags_payload, list):
-                        card.tags = ",".join(tags_payload)
-                    elif isinstance(tags_payload, str):
-                        card.tags = tags_payload
-                        
-                elif op.action == "DELETE":
-                    card = await db.get(Flashcard, str(op.entityId))
-                    if card and card.user_id == current_user.id:
-                        card.is_deleted = True
-                        card.updated_at = datetime.datetime.utcnow()
-                        
-            elif op.entityType == "NOTEBOOK":
-                if op.action in ["CREATE", "UPDATE"]:
-                    book = await db.get(Notebook, str(op.entityId))
-                    if not book:
-                        book = Notebook(id=str(op.entityId), user_id=current_user.id)
-                        db.add(book)
-                    elif book.user_id != current_user.id:
-                         raise HTTPException(status_code=403, detail="Not authorized to modify this notebook")
-                         
-                    book.title = op.payload.get("title", book.title)
-                    book.content = op.payload.get("content", book.content)
-                    if "isPublic" in op.payload:
-                        book.is_public = op.payload.get("isPublic")
-                    
-                    # Ensure timestamps sync
-                    book.updated_at = datetime.datetime.utcnow()
-                        
-                elif op.action == "DELETE":
-                    book = await db.get(Notebook, str(op.entityId))
-                    if book and book.user_id == current_user.id:
-                        book.is_deleted = True
-                        book.updated_at = datetime.datetime.utcnow()
-                        
-            elif op.entityType == "REVIEW_LOG":
-                if op.action == "CREATE":
-                    # Parse the injected explicit Payload ID rather than trusting the Local Dexie Auto-Increment entityId pointer
-                    f_id = str(op.payload.get("flashcardId"))
-                    
-                    # Convert the UNIX epoch into UTC timestamps for PostgreSQL
-                    reviewed_at_ms = op.payload.get("reviewedAt")
-                    r_time = datetime.datetime.utcnow()
-                    if reviewed_at_ms:
-                        r_time = datetime.datetime.utcfromtimestamp(reviewed_at_ms / 1000.0)
+            async with db.begin_nested():
+                if op.entityType == "FLASHCARD":
+                    if op.action in ["CREATE", "UPDATE"]:
+                        card = await db.get(Flashcard, str(op.entityId))
+                        if not card:
+                            card = Flashcard(id=str(op.entityId), user_id=current_user.id)
+                            db.add(card)
+                        elif card.user_id != current_user.id:
+                            raise HTTPException(status_code=403, detail="Not authorized to modify this flashcard")
 
-                    log = ReviewLog(
-                        flashcard_id=f_id,
-                        grade=op.payload.get("grade"),
-                        state=op.payload.get("state"),
-                        user_id=current_user.id,
-                        reviewed_at=r_time
-                    )
-                    db.add(log)
-                    
+                        card.front = op.payload.get("front", card.front)
+                        card.back = op.payload.get("back", card.back)
+
+                        tags_payload = op.payload.get("tags")
+                        if isinstance(tags_payload, list):
+                            card.tags = ",".join(tags_payload)
+                        elif isinstance(tags_payload, str):
+                            card.tags = tags_payload
+
+                    elif op.action == "DELETE":
+                        card = await db.get(Flashcard, str(op.entityId))
+                        if card and card.user_id == current_user.id:
+                            card.is_deleted = True
+                            card.updated_at = datetime.datetime.utcnow()
+
+                elif op.entityType == "NOTEBOOK":
+                    if op.action in ["CREATE", "UPDATE"]:
+                        book = await db.get(Notebook, str(op.entityId))
+                        if not book:
+                            book = Notebook(id=str(op.entityId), user_id=current_user.id)
+                            db.add(book)
+                        elif book.user_id != current_user.id:
+                            raise HTTPException(status_code=403, detail="Not authorized to modify this notebook")
+
+                        book.title = op.payload.get("title", book.title)
+                        book.content = op.payload.get("content", book.content)
+                        if "isPublic" in op.payload:
+                            book.is_public = op.payload.get("isPublic")
+                        book.updated_at = datetime.datetime.utcnow()
+
+                    elif op.action == "DELETE":
+                        book = await db.get(Notebook, str(op.entityId))
+                        if book and book.user_id == current_user.id:
+                            book.is_deleted = True
+                            book.updated_at = datetime.datetime.utcnow()
+
+                elif op.entityType == "REVIEW_LOG":
+                    if op.action == "CREATE":
+                        f_id = str(op.payload.get("flashcardId"))
+
+                        # Skip if the referenced flashcard doesn't exist (orphan log)
+                        flashcard = await db.get(Flashcard, f_id)
+                        if not flashcard:
+                            errors.append({"operation_id": op.id, "error": f"flashcard {f_id} not found, skipping review_log"})
+                            processed += 1
+                            continue
+
+                        reviewed_at_ms = op.payload.get("reviewedAt")
+                        r_time = datetime.datetime.utcnow()
+                        if reviewed_at_ms:
+                            r_time = datetime.datetime.utcfromtimestamp(reviewed_at_ms / 1000.0)
+
+                        log = ReviewLog(
+                            flashcard_id=f_id,
+                            grade=op.payload.get("grade"),
+                            state=op.payload.get("state"),
+                            user_id=current_user.id,
+                            reviewed_at=r_time
+                        )
+                        db.add(log)
+
             processed += 1
         except Exception as e:
             errors.append({"operation_id": op.id, "error": str(e)})
