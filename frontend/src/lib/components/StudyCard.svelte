@@ -1,6 +1,7 @@
 <script lang="ts">
     /**
-     * Shared study card component used by both practice/study and notebooks/study.
+     * Shared study card component — renders card content only (no outer shell).
+     * The parent page provides the card container, sticky header and footer.
      *
      * US-01/02/03: Interactive checklist with progress counter
      * US-04: Suggested FSRS rating based on checklist score (exported via bind:)
@@ -20,13 +21,10 @@
     export let back: string = '';
     export let cardType: string | undefined = undefined;
     export let showingAnswer: boolean = false;
-    /** US-11: when true, criteria appear first; full answer is collapsed */
     export let criteriousMode: boolean = false;
 
-    // Exported reactive state (parent can bind: to these)
-    /** US-04: suggested FSRS rating based on checklist ratio */
+    // Exported reactive state
     export let suggestedRating: 'again' | 'hard' | 'good' = 'good';
-    /** Whether this card's back contains a checklist */
     export let hasChecklist: boolean = false;
 
     // ─── Internal state ───────────────────────────────────────────────────────
@@ -34,14 +32,12 @@
     let answerText = '';
     let answerExpanded = false;
 
-    // Reset checklist whenever we flip to a new card or hide the answer
     $: if (!showingAnswer) {
         checklistItems = [];
         answerText = '';
         answerExpanded = false;
     }
 
-    // Parse when answer is revealed (only on the initial flip)
     $: if (showingAnswer && checklistItems.length === 0) {
         const split = splitContentAndChecklist(back);
         answerText = split.answerText;
@@ -49,12 +45,10 @@
         answerExpanded = !criteriousMode;
     }
 
-    // US-03: live counter
     $: checkCount = countChecklist(checklistItems);
     $: checkProgress = checkCount.total > 0 ? (checkCount.checked / checkCount.total) * 100 : 0;
-    $: progressColor = checkProgress >= 100 ? 'bg-emerald-500' : checkProgress >= 50 ? 'bg-amber-500' : 'bg-rose-500';
+    $: progressColor = checkProgress >= 100 ? '#10b981' : checkProgress >= 50 ? '#f59e0b' : '#f43f5e';
 
-    // Export derived state upward (US-04)
     $: suggestedRating = scoreToRating(checkCount.checked, checkCount.total);
     $: hasChecklist = checklistItems.length > 0;
 
@@ -64,11 +58,10 @@
         );
     }
 
-    // US-09
     function typeBadgeClass(type?: string) {
-        if (type === 'CONCEITO') return 'bg-violet-500/20 text-violet-300 border-violet-500/30';
-        if (type === 'FATO') return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
-        if (type === 'PROCEDIMENTO') return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
+        if (type === 'CONCEITO') return 'badge-conceito';
+        if (type === 'FATO') return 'badge-fato';
+        if (type === 'PROCEDIMENTO') return 'badge-proc';
         return '';
     }
 
@@ -80,137 +73,110 @@
     }
 </script>
 
-<div class="bg-white dark:bg-[#1a1a1a] min-h-[400px] w-full rounded-3xl p-8 md:p-12 shadow-2xl flex flex-col justify-center border border-neutral-200 dark:border-neutral-800 transition-all duration-500 relative {showingAnswer ? 'rotate-x-2' : ''}">
+<div class="card-content">
 
-    <!-- US-09: Type badge -->
-    {#if cardType}
-        <div class="absolute top-4 right-4">
-            <span class="text-xs font-bold px-2.5 py-1 rounded-full border {typeBadgeClass(cardType)}">
-                {typeLabel(cardType)}
-            </span>
-        </div>
-    {/if}
-
-    <!-- US-11: Modo criterioso indicator -->
-    {#if criteriousMode && showingAnswer}
-        <div class="absolute top-4 left-4">
-            <span class="text-xs font-bold px-2 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                Modo criterioso
-            </span>
+    <!-- Badge row -->
+    {#if cardType || (criteriousMode && showingAnswer)}
+        <div class="badge-row">
+            {#if cardType}
+                <span class="badge {typeBadgeClass(cardType)}">{typeLabel(cardType)}</span>
+            {/if}
+            {#if criteriousMode && showingAnswer}
+                <span class="badge badge-criterious">● Criterioso</span>
+            {/if}
         </div>
     {/if}
 
     <!-- Front -->
-    <div class="prose prose-lg dark:prose-invert max-w-none w-full text-center prose-p:leading-relaxed prose-code:bg-neutral-100 dark:prose-code:bg-neutral-800 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-indigo-600 dark:prose-code:text-indigo-400 {showingAnswer && criteriousMode ? 'mt-8' : ''}">
+    <div class="prose dark:prose-invert max-w-none question">
         {@html snarkdown(front)}
     </div>
 
-    <!-- Back (after flip) -->
+    <!-- Back -->
     {#if showingAnswer}
-        <div class="w-full h-px bg-neutral-200 dark:bg-neutral-800 my-8"></div>
+        <div class="divider"></div>
 
-        <!-- US-11: Critérios first in criterious mode -->
         {#if criteriousMode && checklistItems.length > 0}
-            <div class="mb-6 animate-fade-in-up">
-                <p class="text-xs font-bold text-center text-indigo-400 uppercase tracking-widest mb-4">
-                    Avalie pelos critérios antes de ver a resposta completa
-                </p>
+            <!-- Criterious mode: criteria first -->
+            <div class="animate-in">
+                <p class="criteria-hint">Avalie pelos critérios antes de ver a resposta completa</p>
 
-                <div class="flex items-center justify-between mb-3">
-                    <span class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Critérios</span>
-                    <span class="text-sm font-bold {checkCount.checked === checkCount.total ? 'text-emerald-400' : 'text-neutral-300'}">
-                        {checkCount.checked} de {checkCount.total}
-                        {#if checkCount.checked === checkCount.total} ✓{/if}
+                <div class="criteria-header">
+                    <span class="criteria-label">Critérios</span>
+                    <span class="criteria-counter {checkCount.checked === checkCount.total ? 'done' : ''}">
+                        {checkCount.checked} / {checkCount.total}
+                        {#if checkCount.checked === checkCount.total}✓{/if}
                     </span>
                 </div>
 
-                <div class="w-full h-1.5 bg-neutral-800 rounded-full mb-4 overflow-hidden">
-                    <div class="h-full {progressColor} transition-all duration-300" style="width: {checkProgress}%"></div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width:{checkProgress}%; background:{progressColor}"></div>
                 </div>
 
-                <div class="space-y-2">
+                <div class="checklist">
                     {#each checklistItems as item, i}
-                        <label class="flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-colors {item.checked ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-neutral-800/60 border border-neutral-700/60'} hover:border-neutral-500">
+                        <label class="check-item {item.checked ? 'checked' : ''}">
                             <input
                                 type="checkbox"
                                 checked={item.checked}
                                 on:change={() => toggleItem(i)}
-                                class="mt-0.5 w-4 h-4 rounded accent-emerald-500 cursor-pointer flex-shrink-0"
+                                class="check-input"
                             />
-                            <span class="text-sm {item.checked ? 'line-through text-neutral-500' : 'text-neutral-200'}">
-                                {item.text}
-                            </span>
+                            <span class="check-text">{item.text}</span>
                         </label>
                     {/each}
                 </div>
 
-                {#if checkCount.checked === checkCount.total && checkCount.total > 0}
-                    <div class="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
-                        <span class="text-emerald-400 font-bold text-sm">Todos os critérios atingidos!</span>
+                <!-- Collapsible full answer -->
+                <button class="expand-btn" on:click={() => answerExpanded = !answerExpanded}>
+                    <svg class="chevron {answerExpanded ? 'open' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                    {answerExpanded ? 'Ocultar referência' : 'Ver referência completa'}
+                </button>
+
+                {#if answerExpanded && answerText}
+                    <div class="prose dark:prose-invert max-w-none answer animate-in">
+                        {@html snarkdown(answerText)}
                     </div>
                 {/if}
-
-                <!-- US-11: Collapsible full answer -->
-                <div class="mt-4">
-                    <button
-                        on:click={() => answerExpanded = !answerExpanded}
-                        class="w-full py-2 text-xs text-neutral-500 hover:text-neutral-300 transition font-medium flex items-center justify-center gap-2"
-                    >
-                        <svg class="w-3.5 h-3.5 transition-transform {answerExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                        {answerExpanded ? 'Ocultar referência completa' : 'Ver referência completa'}
-                    </button>
-
-                    {#if answerExpanded && answerText}
-                        <div class="mt-3 pt-3 border-t border-neutral-800 prose prose-sm dark:prose-invert max-w-none animate-fade-in-up">
-                            {@html snarkdown(answerText)}
-                        </div>
-                    {/if}
-                </div>
             </div>
 
         {:else}
-            <!-- Normal mode: answer text first, then checklist -->
+            <!-- Normal mode: answer then criteria -->
             {#if answerText}
-                <div class="prose prose-lg dark:prose-invert max-w-none w-full text-center animate-fade-in-up">
+                <div class="prose dark:prose-invert max-w-none answer animate-in">
                     {@html snarkdown(answerText)}
                 </div>
             {/if}
 
             {#if checklistItems.length > 0}
-                <div class="mt-6 animate-fade-in-up">
-                    <div class="flex items-center justify-between mb-3">
-                        <span class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Critérios</span>
-                        <span class="text-sm font-bold {checkCount.checked === checkCount.total ? 'text-emerald-400' : 'text-neutral-300'}">
-                            {checkCount.checked} de {checkCount.total}
-                            {#if checkCount.checked === checkCount.total} ✓{/if}
+                <div class="animate-in {answerText ? 'mt-5' : ''}">
+                    <div class="criteria-header">
+                        <span class="criteria-label">Critérios</span>
+                        <span class="criteria-counter {checkCount.checked === checkCount.total ? 'done' : ''}">
+                            {checkCount.checked} / {checkCount.total}
+                            {#if checkCount.checked === checkCount.total}✓{/if}
                         </span>
                     </div>
 
-                    <div class="w-full h-1.5 bg-neutral-800 rounded-full mb-4 overflow-hidden">
-                        <div class="h-full {progressColor} transition-all duration-300" style="width: {checkProgress}%"></div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:{checkProgress}%; background:{progressColor}"></div>
                     </div>
 
-                    <div class="space-y-2">
+                    <div class="checklist">
                         {#each checklistItems as item, i}
-                            <label class="flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-colors {item.checked ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-neutral-800/60 border border-neutral-700/60'} hover:border-neutral-500">
+                            <label class="check-item {item.checked ? 'checked' : ''}">
                                 <input
                                     type="checkbox"
                                     checked={item.checked}
                                     on:change={() => toggleItem(i)}
-                                    class="mt-0.5 w-4 h-4 rounded accent-emerald-500 cursor-pointer flex-shrink-0"
+                                    class="check-input"
                                 />
-                                <span class="text-sm {item.checked ? 'line-through text-neutral-500' : 'text-neutral-200'}">
-                                    {item.text}
-                                </span>
+                                <span class="check-text">{item.text}</span>
                             </label>
                         {/each}
                     </div>
-
-                    {#if checkCount.checked === checkCount.total && checkCount.total > 0}
-                        <div class="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
-                            <span class="text-emerald-400 font-bold text-sm">Todos os critérios atingidos!</span>
-                        </div>
-                    {/if}
                 </div>
             {/if}
         {/if}
@@ -218,7 +184,81 @@
 </div>
 
 <style>
-    .rotate-x-2 { transform: rotateX(2deg); }
-    .animate-fade-in-up { animation: fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-    @keyframes fadeInUp { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
+    .card-content { width: 100%; }
+
+    /* Badges */
+    .badge-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+    .badge {
+        font-size: 10px; font-weight: 700; letter-spacing: .04em;
+        padding: 3px 9px; border-radius: 99px; border: 1px solid;
+    }
+    .badge-conceito  { background: rgba(139,92,246,.12); color: #a78bfa; border-color: rgba(139,92,246,.25); }
+    .badge-fato      { background: rgba(245,158,11,.12); color: #fbbf24; border-color: rgba(245,158,11,.25); }
+    .badge-proc      { background: rgba(16,185,129,.12);  color: #34d399; border-color: rgba(16,185,129,.25); }
+    .badge-criterious{ background: rgba(99,102,241,.12);  color: #818cf8; border-color: rgba(99,102,241,.25); }
+
+    /* Question */
+    .question { font-size: 1.05rem; line-height: 1.6; }
+
+    /* Divider */
+    .divider { height: 1px; background: rgba(255,255,255,.08); margin: 20px 0; }
+
+    /* Answer */
+    .answer { font-size: .95rem; line-height: 1.65; color: #d4d4d4; }
+
+    /* Criteria */
+    .criteria-hint {
+        font-size: 11px; font-weight: 700; color: #818cf8;
+        text-transform: uppercase; letter-spacing: .07em; margin-bottom: 14px;
+    }
+    .criteria-header {
+        display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
+    }
+    .criteria-label { font-size: 11px; font-weight: 700; color: #737373; text-transform: uppercase; letter-spacing: .07em; }
+    .criteria-counter { font-size: 13px; font-weight: 700; color: #a3a3a3; }
+    .criteria-counter.done { color: #10b981; }
+
+    .progress-bar { height: 4px; background: rgba(255,255,255,.08); border-radius: 99px; overflow: hidden; margin-bottom: 12px; }
+    .progress-fill { height: 100%; border-radius: 99px; transition: width .3s ease; }
+
+    /* Checklist items */
+    .checklist { display: flex; flex-direction: column; gap: 8px; }
+    .check-item {
+        display: flex; align-items: flex-start; gap: 10px;
+        padding: 11px 13px; border-radius: 10px; cursor: pointer;
+        border: 1px solid rgba(255,255,255,.08);
+        background: rgba(255,255,255,.03);
+        transition: background .15s, border-color .15s;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .check-item:active { background: rgba(255,255,255,.07); }
+    .check-item.checked {
+        background: rgba(16,185,129,.08);
+        border-color: rgba(16,185,129,.2);
+    }
+    .check-input {
+        margin-top: 2px; width: 16px; height: 16px;
+        flex-shrink: 0; accent-color: #10b981; cursor: pointer;
+    }
+    .check-text { font-size: .875rem; line-height: 1.5; color: #e5e5e5; }
+    .check-item.checked .check-text { text-decoration: line-through; color: #737373; }
+
+    /* Expand button */
+    .expand-btn {
+        display: flex; align-items: center; gap: 6px;
+        margin-top: 14px; padding: 6px 0;
+        font-size: 12px; font-weight: 600; color: #737373;
+        background: none; border: none; cursor: pointer;
+        transition: color .15s;
+    }
+    .expand-btn:hover { color: #a3a3a3; }
+    .chevron { width: 14px; height: 14px; transition: transform .2s; flex-shrink: 0; }
+    .chevron.open { transform: rotate(180deg); }
+
+    /* Animation */
+    .animate-in { animation: fadeUp .25s cubic-bezier(.16,1,.3,1) both; }
+    @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
 </style>
