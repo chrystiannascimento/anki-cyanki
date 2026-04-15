@@ -137,6 +137,13 @@
 
         {:else}
             <div class="card-shell">
+                {#if currentCard.tags && currentCard.tags.length > 0}
+                    <div class="tags-row">
+                        {#each currentCard.tags as tag}
+                            <span class="tag">{tag}</span>
+                        {/each}
+                    </div>
+                {/if}
                 <StudyCard
                     front={currentCard.front}
                     back={currentCard.back}
@@ -266,6 +273,18 @@
     }
     @media (min-height: 640px) {
         .card-shell { padding: 24px; }
+    }
+    .tags-row {
+        display: flex; flex-wrap: wrap; gap: 6px;
+        margin-bottom: 14px;
+    }
+    .tag {
+        font-size: 11px; font-weight: 600;
+        padding: 3px 9px; border-radius: 99px;
+        background: rgba(99,102,241,.15);
+        border: 1px solid rgba(99,102,241,.3);
+        color: #a5b4fc;
+        white-space: nowrap;
     }
 
     /* ── State screens ─────────────────────────────────────────────────────── */
