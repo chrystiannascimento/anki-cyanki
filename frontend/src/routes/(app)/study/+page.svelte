@@ -1,9 +1,10 @@
 <script lang="ts">
     import { onMount, tick } from 'svelte';
-    import { getDueCards, processReview, Rating } from '$lib/fsrs';
+    import { getDueCards, getAllCardStates, processReview, Rating } from '$lib/fsrs';
     import { addXP, addCoins, checkStreak } from '$lib/stores/gamification';
     import { saveSession, clearSession } from '$lib/stores/sessionContext';
-    import type { Flashcard } from '$lib/db';
+    import { db, type Flashcard } from '$lib/db';
+    import { syncEngine } from '$lib/sync';
     import { Confetti } from 'svelte-confetti';
     import StudyCard from '$lib/components/StudyCard.svelte';
 
@@ -12,6 +13,8 @@
     let showingAnswer = false;
     let showConfetti = false;
     let isLoading = true;
+    let extraMode = false;
+    let sessionCardCount = 0;
 
     let suggestedRating: 'again' | 'hard' | 'good' = 'good';
     let hasChecklist = false;
@@ -36,16 +39,45 @@
 
     function flipCard() { showingAnswer = true; }
 
+    async function loadExtraCards() {
+        const all = await db.flashcards.toArray();
+        if (all.length === 0) return false;
+        const states = await getAllCardStates();
+        dueCards = all.sort((a, b) =>
+            (states.get(a.id)?.due.getTime() ?? 0) - (states.get(b.id)?.due.getTime() ?? 0)
+        );
+        return true;
+    }
+
     async function rateCard(rating: Rating) {
         if (!currentCard) return;
         await processReview(currentCard.id, rating);
-        addXP(10); addCoins(1); checkStreak();
-        saveSession({ type: 'global', name: 'Estudo Global', cardIndex: currentIndex + 1, totalCards: dueCards.length, savedAt: Date.now() });
+        addXP(10); addCoins(1);
+        sessionCardCount++;
+        if (sessionCardCount === 10) checkStreak();
+
+        const nextIndex = currentIndex + 1;
+
+        if (nextIndex >= dueCards.length) {
+            // Session batch done — sync and continue with extra cards
+            syncEngine.triggerSync();
+            clearSession();
+            const hasMore = await loadExtraCards();
+            if (hasMore) {
+                currentIndex = 0;
+                extraMode = true;
+            } else {
+                currentIndex = nextIndex; // Will show "no cards" state
+            }
+        } else {
+            saveSession({ type: 'global', name: 'Estudo Global', cardIndex: nextIndex, totalCards: dueCards.length, savedAt: Date.now() });
+            currentIndex = nextIndex;
+        }
+
         showConfetti = false;
         await tick();
         showConfetti = true;
         showingAnswer = false;
-        currentIndex += 1;
     }
 
     const ratingConfig = [
@@ -85,7 +117,7 @@
                 Sair
             </a>
 
-            <span class="session-label">Estudo Global</span>
+            <span class="session-label">{extraMode ? 'Prática Extra' : 'Estudo Global'}</span>
 
             <button
                 on:click={toggleCriteriousMode}
@@ -128,10 +160,10 @@
         {:else if currentIndex >= dueCards.length}
             <div class="state-center">
                 <div class="state-box">
-                    <span class="state-icon">🎉</span>
-                    <h2>Sessão concluída!</h2>
-                    <p>Todas as revisões processadas.</p>
-                    <a href="/dashboard" class="btn-primary">Voltar ao Dashboard</a>
+                    <span class="state-icon">🏆</span>
+                    <h2>Sem cartas para estudar.</h2>
+                    <p>Adicione flashcards para começar.</p>
+                    <a href="/dashboard" class="btn-neutral">Voltar ao Dashboard</a>
                 </div>
             </div>
 

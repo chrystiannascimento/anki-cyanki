@@ -1,8 +1,14 @@
 <script lang="ts">
     import { page } from '$app/stores';
     import { session } from '$lib/authStore';
-    
+    import { themeStore, toggleTheme } from '$lib/theme';
+    import { syncEngine, isSyncingStore, syncPendingCount } from '$lib/sync';
+
     export let isOpen = false;
+
+    async function triggerSync() {
+        await syncEngine.triggerSync();
+    }
 
     const links = [
         { href: '/dashboard', label: 'Dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
@@ -33,7 +39,7 @@
 <div class="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity" on:click={close} on:keydown={e => e.key === 'Escape' && close()} role="button" tabindex="0" aria-label="Close Sidebar"></div>
 {/if}
 
-<aside class="fixed top-0 left-0 z-50 h-screen w-64 bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 transform transition-transform duration-300 ease-in-out {isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 flex flex-col">
+<aside class="fixed top-0 left-0 z-50 h-[100dvh] w-64 bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 transform transition-transform duration-300 ease-in-out {isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 flex flex-col">
     <div class="h-16 flex items-center px-6 border-b border-neutral-200 dark:border-neutral-800">
         <h1 class="text-2xl font-extrabold tracking-tight text-indigo-600 dark:text-indigo-400">Cyanki</h1>
     </div>
@@ -49,11 +55,36 @@
         {/each}
     </nav>
 
-    <div class="p-4 border-t border-neutral-200 dark:border-neutral-800 space-y-2">
+    <div class="p-4 border-t border-neutral-200 dark:border-neutral-800 space-y-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <a href="/profile" on:click={close} class="flex items-center px-3 py-2.5 rounded-lg font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 transition-colors">
             <svg class="w-5 h-5 mr-3 text-neutral-500 dark:text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
             Profile
         </a>
+        <button on:click={triggerSync} class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg font-medium transition-colors cursor-pointer
+            {$isSyncingStore ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20' : $syncPendingCount > 0 ? 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20' : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800/60'}">
+            <span class="flex items-center">
+                <svg class="w-5 h-5 mr-3 {$isSyncingStore ? 'animate-spin' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Sincronizar
+            </span>
+            {#if $isSyncingStore}
+                <span class="text-xs font-normal opacity-70">em andamento...</span>
+            {:else if $syncPendingCount > 0}
+                <span class="text-xs font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-full">{$syncPendingCount}</span>
+            {:else}
+                <span class="text-xs font-normal opacity-50">✓</span>
+            {/if}
+        </button>
+        <button on:click={toggleTheme} class="w-full flex items-center px-3 py-2.5 rounded-lg font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 transition-colors cursor-pointer">
+            {#if $themeStore === 'dark'}
+                <svg class="w-5 h-5 mr-3 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4.22 2.364a1 1 0 011.415 0l.707.707a1 1 0 01-1.414 1.415l-.707-.707a1 1 0 010-1.415zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zm-3.07 4.343a1 1 0 010 1.415l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM10 16a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zm-4.22-2.364a1 1 0 01-1.415 0l-.707-.707a1 1 0 011.414-1.415l.707.707a1 1 0 010 1.415zM4 10a1 1 0 01-1 1H2a1 1 0 110-2h1a1 1 0 011 1zm3.07-4.343a1 1 0 010-1.415l.707-.707a1 1 0 111.414 1.414l-.707.707a1 1 0 01-1.414 0zM10 5a5 5 0 100 10 5 5 0 000-10z" clip-rule="evenodd"></path></svg>
+                Modo Claro
+            {:else}
+                <svg class="w-5 h-5 mr-3 text-neutral-500 dark:text-neutral-400" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                Modo Escuro
+            {/if}
+        </button>
         <button on:click={logout} class="w-full flex items-center px-3 py-2.5 rounded-lg font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors cursor-pointer">
             <svg class="w-5 h-5 mr-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
             Logout

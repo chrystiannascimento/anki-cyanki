@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { db, type Flashcard, type SavedFilter } from '$lib/db';
+    import { syncEngine } from '$lib/sync';
     import { nanoid } from 'nanoid';
 
     // Tabs state
@@ -135,14 +136,17 @@
             difficulty: selectedDifficulty
         };
 
+        const now = Date.now();
         const newFilter: SavedFilter = {
             id: nanoid(),
             name: filterSaveName.trim(),
             criteria: criteriaObj,
-            createdAt: Date.now()
+            createdAt: now,
+            updatedAt: now
         };
 
         await db.savedFilters.add(newFilter);
+        await syncEngine.enqueue('CREATE', 'SAVED_FILTER', newFilter.id, newFilter);
         filterSaveName = '';
         await loadSavedFilters();
         activeTab = 'saved_filters';
@@ -168,6 +172,7 @@
     async function deleteSavedFilter(filterId: string) {
         if(confirm("Tem certeza que deseja deletar este filtro salvo?")) {
             await db.savedFilters.delete(filterId);
+            await syncEngine.enqueue('DELETE', 'SAVED_FILTER', filterId, {});
             await loadSavedFilters();
         }
     }

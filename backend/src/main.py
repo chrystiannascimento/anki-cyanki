@@ -3,14 +3,19 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.routers import sync
 from src.database import engine, Base
+from sqlalchemy import text
 import src.models as models # Ensuring models are loaded into Base
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Auto-create tables for local testing
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            # Add new columns to existing tables (create_all only creates new tables)
+            # PostgreSQL supports IF NOT EXISTS for ADD COLUMN; this is safe to re-run
+            await conn.execute(text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS gamification_data TEXT"
+            ))
     except Exception as e:
         print(f"Database initialization exception (safe to ignore if tables exist): {e}")
     yield

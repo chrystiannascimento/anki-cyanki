@@ -11,10 +11,13 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    
+    # JSON blob: {"xp": int, "level": int, "streak": int, "coins": int, "lastStudyDate": str|null}
+    gamification_data = Column(Text, nullable=True)
+
     flashcards = relationship("Flashcard", back_populates="owner")
     reviews = relationship("ReviewLog", back_populates="user")
     notebooks = relationship("Notebook", back_populates="owner")
+    saved_filters = relationship("SavedFilter", back_populates="owner")
 
 class Notebook(Base):
     __tablename__ = "notebooks"
@@ -57,6 +60,20 @@ class ReviewLog(Base):
 
     flashcard = relationship("Flashcard", back_populates="reviews")
     user = relationship("User", back_populates="reviews")
+
+class SavedFilter(Base):
+    __tablename__ = "saved_filters"
+
+    id = Column(String, primary_key=True, index=True)  # NanoID
+    user_id = Column(Integer, ForeignKey("users.id"))
+    name = Column(String, nullable=False)
+    criteria = Column(Text, nullable=False)  # JSON serialized
+    is_deleted = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    owner = relationship("User", back_populates="saved_filters")
+
 
 class PasswordResetToken(Base):
     __tablename__ = "password_reset_tokens"

@@ -23,7 +23,7 @@ export interface ReviewLog {
 export interface SyncQueue {
     id?: number;
     action: 'CREATE' | 'UPDATE' | 'DELETE' | 'REVIEW';
-    entityType: 'FLASHCARD' | 'REVIEW_LOG' | 'NOTEBOOK';
+    entityType: 'FLASHCARD' | 'REVIEW_LOG' | 'NOTEBOOK' | 'SAVED_FILTER';
     entityId: string | number;
     payload: any;
     createdAt: number;
@@ -56,6 +56,7 @@ export interface SavedFilter {
         states?: number[]; // e.g., FSRS states [0, 1, 2, 3]
     };
     createdAt: number;
+    updatedAt?: number;
 }
 
 // UC-02: Dynamic media (images in flashcard/notebook content) stored as Blobs

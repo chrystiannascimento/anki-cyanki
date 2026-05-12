@@ -6,6 +6,7 @@
     import { getAllCardStates, processReview, Rating } from '$lib/fsrs';
     import { addXP, addCoins, checkStreak } from '$lib/stores/gamification';
     import { saveSession, clearSession } from '$lib/stores/sessionContext';
+    import { syncEngine } from '$lib/sync';
     import { goto } from '$app/navigation';
     import { Confetti } from 'svelte-confetti';
     import StudyCard from '$lib/components/StudyCard.svelte';
@@ -18,6 +19,7 @@
     let showingAnswer = false;
     let showConfetti = false;
     let notebookTitle = '';
+    let sessionCardCount = 0;
 
     let criteriousMode = false;
     $: if (notebookId) {
@@ -65,13 +67,16 @@
     async function rateCard(rating: Rating) {
         if (!currentCard) return;
         await processReview(currentCard.id, rating);
-        addXP(10); addCoins(1); checkStreak();
+        addXP(10); addCoins(1);
+        sessionCardCount++;
+        if (sessionCardCount === 10) checkStreak();
         saveSession({ type: 'notebook', id: notebookId, name: notebookTitle, cardIndex: currentIndex + 1, totalCards: dueCards.length, savedAt: Date.now() });
         showConfetti = false;
         await tick();
         showConfetti = true;
         showingAnswer = false;
         currentIndex += 1;
+        if (currentIndex >= dueCards.length) syncEngine.triggerSync();
     }
 
     function finishSession() { clearSession(); goto('/notebooks'); }

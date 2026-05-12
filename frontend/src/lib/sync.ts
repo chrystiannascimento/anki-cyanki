@@ -1,7 +1,8 @@
 import { db } from './db';
 import { PUBLIC_API_URL } from '$env/static/public';
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import { markSessionExpired } from './authStore';
+import { gamificationStore, recomputeStreakFromLogs, recomputeXPFromLogs } from './stores/gamification';
 import {
     getDeletedNotebookIds,
     getDeletedFlashcardIds,
@@ -66,6 +67,8 @@ export class SyncEngine {
 
             // Pull remote changes here unconditionally
             await this.pullRemote();
+            await recomputeStreakFromLogs();
+            await recomputeXPFromLogs();
 
         } catch (error) {
             console.error('Sync failed', error);
@@ -83,10 +86,14 @@ export class SyncEngine {
         if (!token) return;
 
         try {
+            const currentGamification = get(gamificationStore);
             const response = await fetch(`${PUBLIC_API_URL}/sync/pull`, {
+                method: 'POST',
                 headers: {
+                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
-                }
+                },
+                body: JSON.stringify({ gamificationState: currentGamification })
             });
 
             if (response.status === 401) { markSessionExpired(); return; }
@@ -95,7 +102,7 @@ export class SyncEngine {
                 const data = await response.json();
 
                 // Intelligently UPSERT server data resolving conflicts via Timestamps
-                await db.transaction('rw', db.notebooks, db.flashcards, db.reviewLogs, db.leaderboard, async () => {
+                await db.transaction('rw', db.notebooks, db.flashcards, db.reviewLogs, db.leaderboard, db.savedFilters, async () => {
                     // Load tombstones — items the user explicitly deleted locally
                     const deletedNbIds = getDeletedNotebookIds();
                     const deletedFcIds = getDeletedFlashcardIds();
@@ -138,9 +145,9 @@ export class SyncEngine {
                             // Skip items the user intentionally deleted locally
                             if (deletedFcIds.has(remote.id)) continue;
                             const local = localMap.get(remote.id);
-                            // Flashcards used fallback createdAt logic for comparisons previously.
-                            // Switching over to updatedAt for true remote diff-reconciliation.
-                            if (!local || (remote.updatedAt && remote.updatedAt > (local.createdAt || 0))) {
+                            // Insert if new locally, or overwrite if server has a newer version
+                            const localTs = (local as any)?.updatedAt || local?.createdAt || 0;
+                            if (!local || remote.updatedAt > localTs) {
                                 safePuts.push(remote);
                             }
                         }
@@ -163,7 +170,51 @@ export class SyncEngine {
                         const safePuts = data.leaderboard;
                         await db.leaderboard.bulkPut(safePuts);
                     }
+
+                    if (data.savedFilters && data.savedFilters.length > 0) {
+                        const locals = await db.savedFilters.toArray();
+                        const localMap = new Map(locals.map(f => [f.id, f]));
+                        const safePuts = [];
+
+                        for (const remote of data.savedFilters) {
+                            if (remote.isDeleted) {
+                                await db.savedFilters.delete(remote.id);
+                                continue;
+                            }
+                            const local = localMap.get(remote.id);
+                            const localTs = local?.updatedAt || local?.createdAt || 0;
+                            if (!local || remote.updatedAt > localTs) {
+                                safePuts.push({
+                                    id: remote.id,
+                                    name: remote.name,
+                                    criteria: remote.criteria,
+                                    createdAt: remote.createdAt,
+                                    updatedAt: remote.updatedAt
+                                });
+                            }
+                        }
+                        if (safePuts.length > 0) await db.savedFilters.bulkPut(safePuts);
+                    }
                 });
+
+                // Apply server-merged gamification state (max-wins: fixes coins cross-device)
+                if (data.gamificationState) {
+                    const sg = data.gamificationState;
+                    gamificationStore.update(local => {
+                        const localTotal = (local.level - 1) * 100 + local.xp;
+                        const remoteTotal = (sg.level - 1) * 100 + sg.xp;
+                        const winnerTotal = Math.max(localTotal, remoteTotal);
+                        return {
+                            xp: winnerTotal % 100,
+                            level: Math.floor(winnerTotal / 100) + 1,
+                            streak: Math.max(local.streak, sg.streak),
+                            coins: Math.max(local.coins, sg.coins),
+                            lastStudyDate: (sg.lastStudyDate && local.lastStudyDate)
+                                ? (sg.lastStudyDate > local.lastStudyDate ? sg.lastStudyDate : local.lastStudyDate)
+                                : (sg.lastStudyDate || local.lastStudyDate)
+                        };
+                    });
+                }
             }
         } catch (error) {
             console.error('Remote pull failed', error);

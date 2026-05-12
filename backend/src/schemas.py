@@ -40,6 +40,7 @@ class PullNotebook(BaseModel):
     title: str
     content: str
     isPublic: bool
+    isDeleted: bool = False
     createdAt: int
     updatedAt: int
 
@@ -48,7 +49,9 @@ class PullFlashcard(BaseModel):
     front: str
     back: str
     tags: List[str]
+    isDeleted: bool = False
     createdAt: int
+    updatedAt: int
 
 class PullReviewLog(BaseModel):
     id: int
@@ -58,10 +61,30 @@ class PullReviewLog(BaseModel):
     reviewedAt: int
     synced: bool
 
+class PullSavedFilter(BaseModel):
+    id: str
+    name: str
+    criteria: Dict[str, Any]
+    isDeleted: bool = False
+    createdAt: int
+    updatedAt: int
+
+class GamificationState(BaseModel):
+    xp: int = 0
+    level: int = 1
+    streak: int = 0
+    coins: int = 0
+    lastStudyDate: Optional[str] = None
+
+class SyncPullRequest(BaseModel):
+    gamificationState: Optional[GamificationState] = None
+
 class SyncPullResponse(BaseModel):
     notebooks: List[PullNotebook]
     flashcards: List[PullFlashcard]
     reviewLogs: List[PullReviewLog]
+    savedFilters: List[PullSavedFilter] = []
+    gamificationState: Optional[GamificationState] = None
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
