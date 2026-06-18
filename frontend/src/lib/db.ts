@@ -81,6 +81,32 @@ export interface StudyGoal {
     createdAt: number;
 }
 
+// UC-38/39/40/41: Notebook subgroups — practice slices with session history
+export interface NotebookGroup {
+    id: string;               // NanoID primary key
+    notebookId: string;       // FK for parent notebook
+    groupIndex: number;       // 1-based sequential index
+    cardIds: string[];        // Immutable snapshot of card IDs at generation time
+    cardCount: number;        // Cards in snapshot
+    groupSize: number;        // Configured group size at generation time
+    shuffled: boolean;        // Whether shuffle is active for this group
+    shuffleSeed: number | null; // Seed for deterministic shuffle
+    createdAt: number;        // Unix timestamp ms
+    synced: boolean;
+}
+
+export interface GroupSession {
+    id: string;               // NanoID primary key
+    groupId: string;          // FK to notebookGroups
+    notebookId: string;       // FK to notebook (for direct queries)
+    score: 'E' | 'D' | 'C' | 'B' | 'A' | 'S';
+    accuracy: number;         // 0.0–1.0
+    totalCards: number;       // Cards presented (excluding deleted)
+    correctCards: number;
+    studiedAt: number;        // Unix timestamp ms of session completion
+    synced: boolean;
+}
+
 // UC-12: Community challenges — offline-first, shareable via 6-char code
 export interface Challenge {
     id: string;                       // NanoID primary key
@@ -114,6 +140,8 @@ export class CyankiDB extends Dexie {
     mediaCache!: Table<MediaCacheEntry, string>;
     challenges!: Table<Challenge, string>;
     studyGoals!: Table<StudyGoal, string>;
+    notebookGroups!: Table<NotebookGroup, string>;
+    groupSessions!: Table<GroupSession, string>;
 
     constructor() {
         super('cyanki_db');
@@ -154,6 +182,12 @@ export class CyankiDB extends Dexie {
         this.version(9).stores({
             flashcards: 'id, *tags, createdAt, type'
         });
+
+        // v10: add notebookGroups and groupSessions tables for UC-38/39/40/41
+        this.version(10).stores({
+            notebookGroups: 'id, notebookId, [notebookId+groupIndex]',
+            groupSessions: 'id, groupId, notebookId, studiedAt'
+        });
     }
 }
 
@@ -169,6 +203,8 @@ export async function clearCyankiData() {
         db.savedFilters.clear(),
         db.mediaCache.clear(),
         db.challenges.clear(),
-        db.studyGoals.clear()
+        db.studyGoals.clear(),
+        db.notebookGroups.clear(),
+        db.groupSessions.clear()
     ]);
 }

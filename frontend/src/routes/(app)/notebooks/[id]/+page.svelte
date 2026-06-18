@@ -1,7 +1,18 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount, onDestroy } from 'svelte';
-	import { db, type Notebook, type Flashcard } from '$lib/db';
+	import { db, type Notebook, type Flashcard, type NotebookGroup, type GroupSession } from '$lib/db';
+	import {
+		generateGroups,
+		getGroupsForNotebook,
+		getRecentSessions,
+		deleteGroupsForNotebook,
+		toggleShuffle,
+		reshuffleSeed,
+		calculateScore,
+		SCORE_COLOR,
+		relativeDate,
+	} from '$lib/notebookGroups';
 	import { syncEngine } from '$lib/sync';
 	import { marked } from 'marked';
 	import DOMPurify from 'dompurify';
@@ -23,7 +34,83 @@
 	let content = '';
 	let renderedContent = '';
 	let isSaving = false;
-	let viewMode: 'markdown' | 'flashcards' = 'markdown';
+	let viewMode: 'markdown' | 'flashcards' | 'subgroups' = 'markdown';
+
+	// ─── UC-38/39/41: Subgroups state ─────────────────────────────────────────
+	let notebookGroupsList: NotebookGroup[] = [];
+	let groupSessionsMap = new Map<string, GroupSession[]>();
+	let groupValidCounts = new Map<string, number>();
+	let groupSize = 20;
+	let isGeneratingGroups = false;
+	let showReorganizeModal = false;
+	let isReorganizing = false;
+
+	async function loadGroups() {
+		notebookGroupsList = await getGroupsForNotebook(notebookId);
+		const allIds = new Set((await db.flashcards.toArray()).map((c: Flashcard) => c.id));
+		const sessionsMap = new Map<string, GroupSession[]>();
+		const validMap = new Map<string, number>();
+		for (const g of notebookGroupsList) {
+			sessionsMap.set(g.id, await getRecentSessions(g.id));
+			validMap.set(g.id, g.cardIds.filter(id => allIds.has(id)).length);
+		}
+		groupSessionsMap = sessionsMap;
+		groupValidCounts = validMap;
+	}
+
+	async function handleGenerateGroups() {
+		if (sessionFlashcards.length === 0 || isGeneratingGroups) return;
+		isGeneratingGroups = true;
+		try {
+			const cardIds = sessionFlashcards.map((c: any) => c.id);
+			await generateGroups(notebookId, cardIds, groupSize);
+			await loadGroups();
+		} finally {
+			isGeneratingGroups = false;
+		}
+	}
+
+	async function handleToggleShuffle(group: NotebookGroup) {
+		if (group.shuffled) {
+			await reshuffleSeed(group.id);
+		} else {
+			await toggleShuffle(group);
+		}
+		await loadGroups();
+	}
+
+	async function handleResetShuffle(group: NotebookGroup) {
+		await db.notebookGroups.update(group.id, { shuffled: false, shuffleSeed: null });
+		await loadGroups();
+	}
+
+	async function handleReorganize() {
+		isReorganizing = true;
+		try {
+			await deleteGroupsForNotebook(notebookId);
+			const cardIds = sessionFlashcards.map((c: any) => c.id);
+			await generateGroups(notebookId, cardIds, groupSize);
+			await loadGroups();
+			showReorganizeModal = false;
+		} finally {
+			isReorganizing = false;
+		}
+	}
+
+	$: groupsPreviewCount = sessionFlashcards.length > 0
+		? Math.ceil(sessionFlashcards.length / Math.max(5, groupSize))
+		: 0;
+
+	$: masterizedCount = notebookGroupsList.filter(g => {
+		const sessions = groupSessionsMap.get(g.id) ?? [];
+		const last = sessions[sessions.length - 1];
+		return last && ['B', 'A', 'S'].includes(last.score);
+	}).length;
+
+	$: notebookUpdatedAfterGroups = notebookGroupsList.length > 0 && (() => {
+		const snapshotTotal = notebookGroupsList.reduce((s, g) => s + g.cardIds.length, 0);
+		return sessionFlashcards.length !== snapshotTotal;
+	})();
 	let sessionFlashcards: ParsedCard[] = [];
 	let parseToast: { updated: number; created: number } | null = null;
 	let parseToastTimer: ReturnType<typeof setTimeout>;
@@ -235,6 +322,7 @@
 
 		await persistCards(parsed.extractedCards, true);
 		showPerfHint = true;
+		await loadGroups();
 	});
 
 	onDestroy(() => {
@@ -636,21 +724,30 @@
 		</div>
 
 		<!-- Preview Pane (Right) -->
-		<div class="w-1/2 flex flex-col overflow-hidden bg-white dark:bg-neutral-800">
+		<div class="w-1/2 flex flex-col overflow-hidden bg-white dark:bg-neutral-800 relative">
 
 			<!-- Tab switcher + search toggle -->
 			<div class="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 shrink-0">
 				<div class="bg-neutral-100 dark:bg-neutral-900 rounded-full p-1 flex shadow-inner">
 					<button
-						class="px-6 py-1.5 rounded-full text-sm font-semibold transition-all {viewMode === 'markdown' ? 'bg-white dark:bg-neutral-700 shadow text-indigo-600 dark:text-indigo-400' : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'}"
+						class="px-4 py-1.5 rounded-full text-sm font-semibold transition-all {viewMode === 'markdown' ? 'bg-white dark:bg-neutral-700 shadow text-indigo-600 dark:text-indigo-400' : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'}"
 						on:click={() => { viewMode = 'markdown'; searchVisible = false; searchQuery = ''; }}
 					>Markdown</button>
 					<button
-						class="px-6 py-1.5 rounded-full text-sm font-semibold transition-all {viewMode === 'flashcards' ? 'bg-white dark:bg-neutral-700 shadow text-indigo-600 dark:text-indigo-400' : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'}"
+						class="px-4 py-1.5 rounded-full text-sm font-semibold transition-all {viewMode === 'flashcards' ? 'bg-white dark:bg-neutral-700 shadow text-indigo-600 dark:text-indigo-400' : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'}"
 						on:click={() => viewMode = 'flashcards'}
 					>
 						Flashcards
 						<span class="ml-1 bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400 px-2 py-0.5 rounded-full text-xs">{sessionFlashcards.length}</span>
+					</button>
+					<button
+						class="px-4 py-1.5 rounded-full text-sm font-semibold transition-all {viewMode === 'subgroups' ? 'bg-white dark:bg-neutral-700 shadow text-indigo-600 dark:text-indigo-400' : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'}"
+						on:click={() => { viewMode = 'subgroups'; searchVisible = false; searchQuery = ''; }}
+					>
+						Subgrupos
+						{#if notebookGroupsList.length > 0}
+							<span class="ml-1 bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-400 px-2 py-0.5 rounded-full text-xs">{notebookGroupsList.length}</span>
+						{/if}
 					</button>
 				</div>
 
@@ -699,7 +796,204 @@
 				</div>
 			{/if}
 
-			{#if viewMode === 'markdown'}
+			{#if viewMode === 'subgroups'}
+				<!-- ── UC-38/39/41 Subgroups Panel ──────────────────────────────── -->
+				<div class="flex-1 overflow-y-auto p-6">
+
+					{#if notebookUpdatedAfterGroups}
+						<div class="mb-4 flex items-start gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl text-sm text-amber-800 dark:text-amber-300">
+							<svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+							<div>
+								<p class="font-semibold">Caderno atualizado</p>
+								<p class="text-xs mt-0.5 opacity-75">O caderno foi modificado desde a última geração. Deseja reorganizar os subgrupos?</p>
+								<button on:click={() => showReorganizeModal = true} class="mt-2 text-xs font-bold text-amber-700 dark:text-amber-400 hover:underline">Reorganizar agora →</button>
+							</div>
+						</div>
+					{/if}
+
+					{#if notebookGroupsList.length === 0}
+						<!-- State: no groups yet — setup panel -->
+						<div class="max-w-sm mx-auto pt-8 text-center">
+							<div class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
+								<svg class="w-7 h-7 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h8m-8 4h4"/>
+								</svg>
+							</div>
+							<h2 class="text-lg font-bold text-neutral-800 dark:text-neutral-200 mb-1">Subgrupos de estudo</h2>
+							<p class="text-sm text-neutral-500 dark:text-neutral-400 mb-6">Divida os flashcards deste caderno em grupos menores para praticar progressivamente, sem afetar o FSRS.</p>
+
+							<div class="bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-5 text-left space-y-4">
+								<div>
+									<label class="block text-xs font-bold uppercase tracking-widest text-neutral-400 mb-2">Cards por grupo</label>
+									<input
+										type="number"
+										bind:value={groupSize}
+										min="5"
+										max="200"
+										class="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm font-semibold text-neutral-800 dark:text-neutral-200 outline-none focus:border-indigo-400 dark:focus:border-indigo-500"
+									/>
+								</div>
+								{#if sessionFlashcards.length > 0}
+									<p class="text-sm text-neutral-500 dark:text-neutral-400">
+										→ <span class="font-bold text-neutral-700 dark:text-neutral-300">{groupsPreviewCount} grupo{groupsPreviewCount !== 1 ? 's' : ''}</span> de até <span class="font-bold text-neutral-700 dark:text-neutral-300">{Math.max(5, groupSize)} cards</span>
+										<span class="text-neutral-400"> ({sessionFlashcards.length} cards no total)</span>
+									</p>
+								{/if}
+								<button
+									on:click={handleGenerateGroups}
+									disabled={sessionFlashcards.length === 0 || isGeneratingGroups}
+									title={sessionFlashcards.length === 0 ? 'Adicione cards ao caderno antes de gerar subgrupos' : ''}
+									class="w-full py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors"
+								>
+									{isGeneratingGroups ? 'Gerando...' : 'Gerar Subgrupos'}
+								</button>
+							</div>
+						</div>
+
+					{:else}
+						<!-- State: groups exist — progress + grid -->
+						<div class="space-y-4">
+
+							<!-- Progress indicator -->
+							<div class="bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3">
+								<div class="flex items-center justify-between mb-2">
+									<span class="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+										{masterizedCount} de {notebookGroupsList.length} grupos masterizados
+									</span>
+									<span class="text-xs text-neutral-400">{notebookGroupsList.length > 0 ? Math.round(masterizedCount / notebookGroupsList.length * 100) : 0}%</span>
+								</div>
+								<div class="h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+									<div
+										class="h-full bg-indigo-500 rounded-full transition-all duration-500"
+										style="width:{notebookGroupsList.length > 0 ? (masterizedCount / notebookGroupsList.length * 100) : 0}%"
+									></div>
+								</div>
+							</div>
+
+							<!-- Group grid -->
+							<div class="grid grid-cols-1 gap-3">
+								{#each notebookGroupsList as group (group.id)}
+									{@const sessions = groupSessionsMap.get(group.id) ?? []}
+									{@const lastSession = sessions[sessions.length - 1]}
+									{@const validCount = groupValidCounts.get(group.id) ?? group.cardCount}
+									<div class="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 space-y-3">
+										<div class="flex items-center justify-between gap-2">
+											<div class="flex items-center gap-2 min-w-0">
+												<span class="font-bold text-neutral-800 dark:text-neutral-200">Grupo {group.groupIndex}</span>
+												<span class="text-xs px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400">{validCount} card{validCount !== 1 ? 's' : ''}</span>
+												{#if group.shuffled}
+													<span class="text-xs px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700">🔀 Embaralhado</span>
+												{/if}
+											</div>
+											{#if lastSession}
+												<span
+													class="text-sm font-black px-2.5 py-0.5 rounded-lg border"
+													style="color:{SCORE_COLOR[lastSession.score as keyof typeof SCORE_COLOR]};border-color:{SCORE_COLOR[lastSession.score as keyof typeof SCORE_COLOR]}40;background:{SCORE_COLOR[lastSession.score as keyof typeof SCORE_COLOR]}15"
+												>{lastSession.score}</span>
+											{:else}
+												<span class="text-xs font-semibold px-2.5 py-0.5 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-400">–</span>
+											{/if}
+										</div>
+
+										<!-- Mini history -->
+										{#if sessions.length > 0}
+											<div class="flex items-center gap-1.5">
+												{#each sessions as s, i}
+													{#if i > 0}
+														<span class="text-neutral-300 dark:text-neutral-700 text-xs">→</span>
+													{/if}
+													<span
+														class="text-xs font-black w-6 h-6 flex items-center justify-center rounded-md"
+														style="color:{SCORE_COLOR[s.score as keyof typeof SCORE_COLOR]};background:{SCORE_COLOR[s.score as keyof typeof SCORE_COLOR]}20"
+													>{s.score}</span>
+												{/each}
+												{#if lastSession}
+													<span class="text-xs text-neutral-400 ml-1">{relativeDate(lastSession.studiedAt)}</span>
+												{/if}
+											</div>
+										{:else}
+											<p class="text-xs text-neutral-400">Nunca estudado</p>
+										{/if}
+
+										<!-- Actions -->
+										<div class="flex gap-2 pt-1">
+											<a
+												href="/notebooks/{notebookId}/groups/{group.id}"
+												class="flex-1 text-center text-sm font-bold py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors {validCount === 0 ? 'pointer-events-none opacity-40' : ''}"
+												title={validCount === 0 ? 'Todos os cards deste grupo foram removidos do caderno' : ''}
+											>Estudar</a>
+											{#if group.shuffled}
+												<button
+													on:click={() => handleResetShuffle(group)}
+													class="px-3 py-2 text-xs font-semibold rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+													title="Restaurar ordem original"
+												>Ordem original</button>
+											{:else}
+												<button
+													on:click={() => handleToggleShuffle(group)}
+													class="px-3 py-2 text-xs font-semibold rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+													title="Embaralhar cards"
+												>
+													<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+														<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4l4 4m0 0l4-4m-4 4V3m12 17l-4-4m0 0l-4 4m4-4v5M4 20l16-16"/>
+													</svg>
+												</button>
+											{/if}
+										</div>
+									</div>
+								{/each}
+							</div>
+
+							<!-- Reorganize section -->
+							<div class="pt-2 border-t border-neutral-200 dark:border-neutral-700 flex items-end gap-3">
+								<div class="flex-1">
+									<label class="block text-xs font-bold uppercase tracking-widest text-neutral-400 mb-1">Cards por grupo</label>
+									<input
+										type="number"
+										bind:value={groupSize}
+										min="5"
+										max="200"
+										class="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm font-semibold text-neutral-800 dark:text-neutral-200 outline-none focus:border-indigo-400 dark:focus:border-indigo-500"
+									/>
+								</div>
+								<button
+									on:click={() => showReorganizeModal = true}
+									class="px-4 py-2 text-sm font-bold rounded-lg border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+								>Reorganizar grupos</button>
+							</div>
+						</div>
+					{/if}
+				</div>
+
+				<!-- Reorganize confirmation modal -->
+				{#if showReorganizeModal}
+					<div class="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+						<div class="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+							<div class="flex items-start gap-3 mb-4">
+								<div class="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+									<svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+								</div>
+								<div>
+									<h3 class="font-bold text-neutral-800 dark:text-neutral-200">Reorganizar subgrupos?</h3>
+									<p class="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Isso irá recriar todos os subgrupos com o novo tamanho configurado. O histórico de sessões de todos os grupos será <strong class="text-red-600 dark:text-red-400">perdido permanentemente</strong>.</p>
+								</div>
+							</div>
+							<div class="flex gap-3">
+								<button
+									on:click={() => showReorganizeModal = false}
+									class="flex-1 py-2 text-sm font-semibold rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+								>Cancelar</button>
+								<button
+									on:click={handleReorganize}
+									disabled={isReorganizing}
+									class="flex-1 py-2 text-sm font-bold rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white transition-colors"
+								>{isReorganizing ? 'Reorganizando...' : 'Reorganizar e perder histórico'}</button>
+							</div>
+						</div>
+					</div>
+				{/if}
+
+			{:else if viewMode === 'markdown'}
 				<div class="flex-1 overflow-y-auto p-8">
 					<div class="prose dark:prose-invert prose-indigo max-w-none">
 						{@html renderedContent}

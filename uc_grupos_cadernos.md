@@ -29,7 +29,7 @@ Esta especificação descreve a feature de **Subgrupos de Caderno**, uma camada 
 
 ### UC-38 — Geração de Subgrupos de Caderno
 
-**Status:** ❌ Não Implementado
+**Status:** ✅ Implementado
 
 **Ator:** Estudante  
 **Rota Frontend:** `/notebooks/[id]` (aba ou seção "Subgrupos")  
@@ -64,7 +64,7 @@ Esta especificação descreve a feature de **Subgrupos de Caderno**, uma camada 
 
 ### UC-39 — Visualização do Painel de Subgrupos
 
-**Status:** ❌ Não Implementado
+**Status:** ✅ Implementado
 
 **Ator:** Estudante  
 **Rota Frontend:** `/notebooks/[id]` (aba/seção "Subgrupos")
@@ -92,7 +92,7 @@ Esta especificação descreve a feature de **Subgrupos de Caderno**, uma camada 
 
 ### UC-40 — Sessão de Estudo de Subgrupo
 
-**Status:** ❌ Não Implementado
+**Status:** ✅ Implementado
 
 **Ator:** Estudante  
 **Rota Frontend:** `/notebooks/[id]/groups/[groupId]` (rota nova) ou modal fullscreen  
@@ -142,7 +142,7 @@ Esta especificação descreve a feature de **Subgrupos de Caderno**, uma camada 
 
 ### UC-41 — Shuffle e Reorganização de Subgrupos
 
-**Status:** ❌ Não Implementado
+**Status:** ✅ Implementado
 
 **Ator:** Estudante  
 **Rota Frontend:** `/notebooks/[id]` (aba/seção "Subgrupos")  
@@ -195,17 +195,17 @@ Esta especificação descreve a feature de **Subgrupos de Caderno**, uma camada 
 
 | ID      | Requisito | Status |
 |---------|-----------|--------|
-| **RF-SG-01** | O sistema deve permitir configurar o tamanho dos subgrupos (mínimo 5 cards). | ❌ |
-| **RF-SG-02** | O sistema deve gerar subgrupos sequencialmente e persistir a composição no IndexedDB. | ❌ |
-| **RF-SG-03** | O sistema deve exibir grid de subgrupos com última nota, data da última sessão e mini histórico. | ❌ |
-| **RF-SG-04** | O sistema deve executar sessão de prática simples (flip card, Acertei/Errei) por subgrupo. | ❌ |
-| **RF-SG-05** | O sistema deve calcular e persistir a nota da sessão (E/D/C/B/A/S) ao finalizar. | ❌ |
-| **RF-SG-06** | O sistema deve exibir tela de resultado com anel SVG, nota, acertos e histórico atualizado. | ❌ |
-| **RF-SG-07** | O sistema deve suportar shuffle de ordem de apresentação por grupo, com persistência de seed. | ❌ |
-| **RF-SG-08** | O sistema deve suportar reorganização completa de subgrupos com confirmação e reset de histórico. | ❌ |
-| **RF-SG-09** | O sistema deve exibir indicador de progresso geral ("X de Y grupos masterizados"). | ❌ |
-| **RF-SG-10** | O sistema deve ignorar silenciosamente cards deletados do caderno durante a sessão. | ❌ |
-| **RF-SG-11** | O sistema deve exibir banner de aviso quando o caderno for atualizado após a geração dos subgrupos. | ❌ |
+| **RF-SG-01** | O sistema deve permitir configurar o tamanho dos subgrupos (mínimo 5 cards). | ✅ |
+| **RF-SG-02** | O sistema deve gerar subgrupos sequencialmente e persistir a composição no IndexedDB. | ✅ |
+| **RF-SG-03** | O sistema deve exibir grid de subgrupos com última nota, data da última sessão e mini histórico. | ✅ |
+| **RF-SG-04** | O sistema deve executar sessão de prática simples (flip card, Acertei/Errei) por subgrupo. | ✅ |
+| **RF-SG-05** | O sistema deve calcular e persistir a nota da sessão (E/D/C/B/A/S) ao finalizar. | ✅ |
+| **RF-SG-06** | O sistema deve exibir tela de resultado com anel SVG, nota, acertos e histórico atualizado. | ✅ |
+| **RF-SG-07** | O sistema deve suportar shuffle de ordem de apresentação por grupo, com persistência de seed. | ✅ |
+| **RF-SG-08** | O sistema deve suportar reorganização completa de subgrupos com confirmação e reset de histórico. | ✅ |
+| **RF-SG-09** | O sistema deve exibir indicador de progresso geral ("X de Y grupos masterizados"). | ✅ |
+| **RF-SG-10** | O sistema deve ignorar silenciosamente cards deletados do caderno durante a sessão. | ✅ |
+| **RF-SG-11** | O sistema deve exibir banner de aviso quando o caderno for atualizado após a geração dos subgrupos. | ✅ |
 
 ---
 
@@ -254,56 +254,56 @@ Esta especificação descreve a feature de **Subgrupos de Caderno**, uma camada 
 
 | Campo | Tipo | Obrigatório | Validação | Status |
 |-------|------|-------------|-----------|--------|
-| Input "Cards por grupo" | Input number | Não | Mínimo 5, padrão 20 | ❌ |
-| Preview "X grupos de até N cards" | Text | — | Calculado dinamicamente | ❌ |
-| Botão "Gerar Subgrupos" | Button | — | Desabilitado se caderno sem cards | ❌ |
+| Input "Cards por grupo" | Input number | Não | Mínimo 5, padrão 20 | ✅ |
+| Preview "X grupos de até N cards" | Text | — | Calculado dinamicamente | ✅ |
+| Botão "Gerar Subgrupos" | Button | — | Desabilitado se caderno sem cards | ✅ |
 
 #### Estado com subgrupos gerados
 
 | Campo | Tipo | Obrigatório | Validação | Status |
 |-------|------|-------------|-----------|--------|
-| Indicador "X de Y grupos masterizados" | Progress + Text | — | Masterizado = última nota ≥ B | ❌ |
-| Barra de progresso geral | Progress bar | — | Proporcional ao indicador | ❌ |
-| Grid de cards de subgrupo | Cards | — | Um card por grupo | ❌ |
-| — Nome do grupo | Text | — | "Grupo N" | ❌ |
-| — Quantidade de cards válidos | Badge | — | Exclui cards deletados | ❌ |
-| — Badge de última nota (E–S) | Badge colorido | — | Cinza se nunca estudado | ❌ |
-| — Data da última sessão | Text relativo | — | "Nunca estudado" se sem histórico | ❌ |
-| — Mini histórico (últimas 5 notas) | Pills sequenciais | — | Vazio se sem histórico | ❌ |
-| — Botão "Estudar" | Button primário | — | — | ❌ |
-| — Botão "Shuffle" / "Ordem original" | Button ícone | — | Toggle conforme estado atual | ❌ |
-| — Badge "🔀 Embaralhado" | Badge | — | Visível quando shuffle ativo | ❌ |
-| Input "Cards por grupo" (reconfiguração) | Input number | Não | Mínimo 5 | ❌ |
-| Botão "Reorganizar grupos" | Button | — | Abre modal de confirmação | ❌ |
+| Indicador "X de Y grupos masterizados" | Progress + Text | — | Masterizado = última nota ≥ B | ✅ |
+| Barra de progresso geral | Progress bar | — | Proporcional ao indicador | ✅ |
+| Grid de cards de subgrupo | Cards | — | Um card por grupo | ✅ |
+| — Nome do grupo | Text | — | "Grupo N" | ✅ |
+| — Quantidade de cards válidos | Badge | — | Exclui cards deletados | ✅ |
+| — Badge de última nota (E–S) | Badge colorido | — | Cinza se nunca estudado | ✅ |
+| — Data da última sessão | Text relativo | — | "Nunca estudado" se sem histórico | ✅ |
+| — Mini histórico (últimas 5 notas) | Pills sequenciais | — | Vazio se sem histórico | ✅ |
+| — Botão "Estudar" | Button primário | — | — | ✅ |
+| — Botão "Shuffle" / "Ordem original" | Button ícone | — | Toggle conforme estado atual | ✅ |
+| — Badge "🔀 Embaralhado" | Badge | — | Visível quando shuffle ativo | ✅ |
+| Input "Cards por grupo" (reconfiguração) | Input number | Não | Mínimo 5 | ✅ |
+| Botão "Reorganizar grupos" | Button | — | Abre modal de confirmação | ✅ |
 
 ### 6.2 `/notebooks/[id]/groups/[groupId]` — Sessão de Estudo de Subgrupo
 
 | Campo | Tipo | Obrigatório | Validação | Status |
 |-------|------|-------------|-----------|--------|
-| Label "Grupo N — Caderno X" | Header | — | — | ❌ |
-| Card front | Div texto | — | Markdown renderizado | ❌ |
-| Botão "Mostrar Resposta" (Espaço) | Button | — | Revela back do card | ❌ |
-| Card back | Div texto | — | Markdown renderizado, oculto até revelar | ❌ |
-| Botão "Errei" (← / F) | Button | — | Registra erro em memória | ❌ |
-| Botão "Acertei" (→ / J) | Button | — | Registra acerto em memória | ❌ |
-| Barra de progresso da sessão | Progress bar | — | Cards respondidos / total válidos | ❌ |
-| Counter "X de Y" | Text | — | Atualiza a cada card | ❌ |
+| Label "Grupo N — Caderno X" | Header | — | — | ✅ |
+| Card front | Div texto | — | Markdown renderizado | ✅ |
+| Botão "Mostrar Resposta" (Espaço) | Button | — | Revela back do card | ✅ |
+| Card back | Div texto | — | Markdown renderizado, oculto até revelar | ✅ |
+| Botão "Errei" (← / F) | Button | — | Registra erro em memória | ✅ |
+| Botão "Acertei" (→ / J) | Button | — | Registra acerto em memória | ✅ |
+| Barra de progresso da sessão | Progress bar | — | Cards respondidos / total válidos | ✅ |
+| Counter "X de Y" | Text | — | Atualiza a cada card | ✅ |
 
 ### 6.3 Tela de Resultado da Sessão
 
 | Campo | Tipo | Obrigatório | Validação | Status |
 |-------|------|-------------|-----------|--------|
-| Anel SVG com percentual de acerto | Gauge animado | — | Mesmo padrão visual do app | ❌ |
-| Nota da sessão em destaque (E–S) | Badge grande colorido | — | Cor conforme tabela de notas | ❌ |
-| Contagem "X acertos de Y cards" | Text | — | — | ❌ |
-| Mini histórico atualizado (últimas 5) | Pills sequenciais | — | Nova nota incluída | ❌ |
-| Botão "Estudar novamente" | Button primário | — | Reinicia sessão com estado de shuffle atual | ❌ |
-| Botão "Voltar para subgrupos" | Button secundário | — | Retorna ao painel UC-39 | ❌ |
+| Anel SVG com percentual de acerto | Gauge animado | — | Mesmo padrão visual do app | ✅ |
+| Nota da sessão em destaque (E–S) | Badge grande colorido | — | Cor conforme tabela de notas | ✅ |
+| Contagem "X acertos de Y cards" | Text | — | — | ✅ |
+| Mini histórico atualizado (últimas 5) | Pills sequenciais | — | Nova nota incluída | ✅ |
+| Botão "Estudar novamente" | Button primário | — | Reinicia sessão com estado de shuffle atual | ✅ |
+| Botão "Voltar para subgrupos" | Button secundário | — | Retorna ao painel UC-39 | ✅ |
 
 ### 6.4 Modal de Confirmação — Reorganizar Grupos
 
 | Campo | Tipo | Obrigatório | Validação | Status |
 |-------|------|-------------|-----------|--------|
-| Texto de aviso sobre perda de histórico | Alert vermelho | — | — | ❌ |
-| Botão "Cancelar" | Button secundário | — | Fecha modal sem ação | ❌ |
-| Botão "Reorganizar e perder histórico" | Button vermelho | — | Executa deleção e recriação | ❌ |
+| Texto de aviso sobre perda de histórico | Alert vermelho | — | — | ✅ |
+| Botão "Cancelar" | Button secundário | — | Fecha modal sem ação | ✅ |
+| Botão "Reorganizar e perder histórico" | Button vermelho | — | Executa deleção e recriação | ✅ |

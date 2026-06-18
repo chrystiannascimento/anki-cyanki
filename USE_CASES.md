@@ -1152,6 +1152,53 @@ Q: ...
 
 ---
 
+### 2.X Subgrupos de Caderno
+
+---
+
+#### UC-38 — Geração de Subgrupos de Caderno
+**Status:** ✅ Implementado
+
+**Ator:** Estudante  
+**Rota Frontend:** `/notebooks/[id]` (aba "Subgrupos")  
+**Módulos:** `frontend/src/lib/db.ts` (tabelas `notebookGroups`, `groupSessions`), `frontend/src/lib/notebookGroups.ts`
+
+**Descrição:** O usuário configura e gera subgrupos para um caderno. Os cards são divididos sequencialmente em grupos de tamanho configurável e persistidos no IndexedDB com composição fixa (snapshot de `cardIds`).
+
+---
+
+#### UC-39 — Visualização do Painel de Subgrupos
+**Status:** ✅ Implementado
+
+**Ator:** Estudante  
+**Rota Frontend:** `/notebooks/[id]` (aba "Subgrupos")
+
+**Descrição:** Grid de cards de subgrupo com última nota (badge colorido E/D/C/B/A/S), data da última sessão, mini histórico das últimas 5 notas, botões "Estudar" e "Shuffle", indicador de progresso geral ("X de Y grupos masterizados") e reorganização com confirmação.
+
+---
+
+#### UC-40 — Sessão de Estudo de Subgrupo
+**Status:** ✅ Implementado
+
+**Ator:** Estudante  
+**Rota Frontend:** `/notebooks/[id]/groups/[groupId]`  
+**Módulos:** `frontend/src/lib/notebookGroups.ts`, `frontend/src/lib/db.ts`
+
+**Descrição:** Sessão prática simples (flip card → Acertei / Errei) para os cards de um subgrupo, sem atualizar FSRS. Ao finalizar, exibe tela de resultado com anel SVG, nota calculada (E–S), contagem de acertos e histórico atualizado. Sessão interrompida não gera registro.
+
+---
+
+#### UC-41 — Shuffle e Reorganização de Subgrupos
+**Status:** ✅ Implementado
+
+**Ator:** Estudante  
+**Rota Frontend:** `/notebooks/[id]` (aba "Subgrupos")  
+**Módulos:** `frontend/src/lib/notebookGroups.ts`
+
+**Descrição:** Shuffle embaralha cards de um grupo (seed determinístico persistido) sem alterar composição. Clicar novamente gera novo seed; botão "Ordem original" restaura sequência. Reorganização completa redefine todos os grupos e apaga histórico de sessões (com confirmação modal).
+
+---
+
 ## 3. Regras de Negócio
 
 | ID | Regra | Contexto |
